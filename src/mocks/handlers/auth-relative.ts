@@ -1,0 +1,52 @@
+import { http, HttpResponse, delay } from 'msw'
+import { mockUser } from '../data'
+
+const MOCK_LATENCY = 300
+
+// These handlers use relative paths to catch direct requests
+export const relativeAuthHandlers = [
+  // Auth endpoints - Relative path handlers
+  http.post('/auth/login', async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const body = await request.json() as any
+    
+    if (body.email === 'admin@earsip.com' && body.password === 'password') {
+      return HttpResponse.json({
+        data: {
+          user: mockUser,
+          token: 'mock-jwt-token-12345',
+        },
+        message: 'Login berhasil',
+      })
+    }
+    
+    return HttpResponse.json(
+      { message: 'Email atau password salah' },
+      { status: 401 }
+    )
+  }),
+
+  http.post('/auth/logout', async () => {
+    await delay(MOCK_LATENCY)
+    return HttpResponse.json({
+      message: 'Logout berhasil',
+    })
+  }),
+
+  http.get('/me', async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return HttpResponse.json(
+        { message: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    return HttpResponse.json({
+      data: mockUser,
+    })
+  }),
+]
