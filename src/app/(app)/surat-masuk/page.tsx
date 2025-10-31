@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -33,18 +33,20 @@ export default function SuratMasukPage() {
   const page = Number(searchParams.get('page') || '1')
   const perPage = Number(searchParams.get('per_page') || process.env.NEXT_PUBLIC_DEFAULT_PAGE_SIZE || '10')
   const search = searchParams.get('search') || ''
-  const categoryId = searchParams.get('category_id') || ''
+  const categoryIdParam = searchParams.get('category_id')
+  const categoryIdNumber = categoryIdParam ? Number(categoryIdParam) : undefined
+  const categoryFilter = Number.isNaN(categoryIdNumber) ? undefined : categoryIdNumber
   
   const [searchInput, setSearchInput] = useState(search)
-  const [selectedCategory, setSelectedCategory] = useState(categoryId)
+  const [selectedCategory, setSelectedCategory] = useState(categoryIdParam ?? 'all')
 
   const { data: suratMasukData, isLoading: isLoadingSuratMasuk } = useQuery({
-    queryKey: ['surat-masuk', page, perPage, search, categoryId],
+    queryKey: ['surat-masuk', page, perPage, search, categoryIdParam ?? 'all'],
     queryFn: () => suratMasukService.getAll({ 
       page, 
       per_page: perPage,
       search,
-      category_id: categoryId || undefined
+      category_id: categoryFilter
     }),
   })
 
@@ -53,13 +55,23 @@ export default function SuratMasukPage() {
     queryFn: () => categoriesService.getAll(),
   })
 
+  useEffect(() => {
+    setSearchInput(search)
+  }, [search])
+
+  useEffect(() => {
+    setSelectedCategory(categoryIdParam ?? 'all')
+  }, [categoryIdParam])
+
   const handleSearch = () => {
     const params = new URLSearchParams()
     params.set('page', '1')
     params.set('per_page', perPage.toString())
     
     if (searchInput) params.set('search', searchInput)
-    if (selectedCategory) params.set('category_id', selectedCategory)
+    if (selectedCategory && selectedCategory !== 'all') {
+      params.set('category_id', selectedCategory)
+    }
     
     router.push(`/surat-masuk?${params.toString()}`)
   }
@@ -76,8 +88,10 @@ export default function SuratMasukPage() {
         await suratMasukService.delete(id)
         toast.success('Surat berhasil dihapus')
         router.refresh()
-      } catch (error: any) {
-        toast.error(error.message || 'Gagal menghapus surat')
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : 'Gagal menghapus surat'
+        toast.error(message || 'Gagal menghapus surat')
       }
     }
   }
@@ -120,7 +134,7 @@ export default function SuratMasukPage() {
               <SelectValue placeholder="Filter Kategori" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Semua Kategori</SelectItem>
+              <SelectItem value="all">Semua Kategori</SelectItem>
               {categories?.map((category) => (
                 <SelectItem key={category.id} value={category.id.toString()}>
                   {category.name}
