@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,37 +10,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { AppSidebar } from './app-sidebar'
+import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Menu, User, LogOut } from 'lucide-react'
 import { useMobile } from '@/hooks/use-mobile'
 
 export function AppHeader() {
   const { user, logout } = useAuth()
   const isMobile = useMobile()
-  const [open, setOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-emerald-100/60 bg-white/80 px-4 sm:px-6 backdrop-blur">
       {isMobile && (
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="shrink-0 md:hidden">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0">
-            <AppSidebar />
-          </SheetContent>
-        </Sheet>
+        <SidebarTrigger className="shrink-0 text-emerald-600 hover:bg-emerald-50 md:hidden">
+          <span className="sr-only">Toggle menu</span>
+          <Menu className="h-5 w-5" />
+        </SidebarTrigger>
       )}
 
       <div className="flex-1" />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="rounded-full">
+          <Button variant="ghost" size="icon" className="rounded-full text-emerald-600 hover:bg-emerald-50">
             <User className="h-5 w-5" />
             <span className="sr-only">User menu</span>
           </Button>

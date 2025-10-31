@@ -4,7 +4,7 @@ class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public response?: any
+    public response?: unknown
   ) {
     super(message)
     this.name = 'ApiError'
@@ -16,7 +16,7 @@ class ApiClient {
   private token: string | null = null
 
   constructor() {
-    const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
+    const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false'
     // When mocks are enabled, use same-origin requests so MSW can intercept.
     this.baseURL = useMocks ? '' : (process.env.NEXT_PUBLIC_API_BASE_URL || '')
     
@@ -74,21 +74,28 @@ class ApiClient {
           }
         }
         
-        const errorData = await response.json().catch(() => ({}))
+        const errorData = (await response.json().catch(() => undefined)) as unknown
+        const errorMessage =
+          errorData &&
+          typeof errorData === 'object' &&
+          'message' in errorData &&
+          typeof (errorData as { message?: unknown }).message === 'string'
+            ? (errorData as { message: string }).message
+            : undefined
         throw new ApiError(
-          errorData.message || `HTTP ${response.status}`,
+          errorMessage || `HTTP ${response.status}`,
           response.status,
           errorData
         )
       }
 
-      const data = await response.json()
+      const data = (await response.json()) as unknown
       
       if (schema) {
         return schema.parse(data)
       }
       
-      return data
+      return data as T
     } catch (error) {
       if (error instanceof ApiError) {
         throw error
@@ -104,13 +111,13 @@ class ApiClient {
 
   // GET request with retry logic for light operations
   async get<T>(endpoint: string, schema?: z.ZodSchema<T>, retries = 1): Promise<T> {
-    let lastError: Error
+    let lastError: unknown
     
     for (let i = 0; i <= retries; i++) {
       try {
         return await this.request(endpoint, { method: 'GET' }, schema)
       } catch (error) {
-        lastError = error as Error
+        lastError = error
         if (i < retries && error instanceof ApiError && error.status >= 500) {
           // Only retry on server errors
           await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
@@ -120,12 +127,15 @@ class ApiClient {
       }
     }
     
-    throw lastError!
+    if (lastError instanceof Error) {
+      throw lastError
+    }
+    throw new ApiError('Unknown error', 0, lastError)
   }
 
   async post<T>(
     endpoint: string,
-    data?: any,
+    data?: unknown,
     schema?: z.ZodSchema<T>,
     options: RequestInit = {}
   ): Promise<T> {
@@ -142,7 +152,7 @@ class ApiClient {
 
   async put<T>(
     endpoint: string,
-    data?: any,
+    data?: unknown,
     schema?: z.ZodSchema<T>
   ): Promise<T> {
     return this.request(

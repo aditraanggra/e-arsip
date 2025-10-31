@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const userData = await authService.me()
           setUser(userData)
-        } catch (error) {
+        } catch {
           // Token is invalid, clear it
           apiClient.setToken(null)
         }
@@ -44,25 +44,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const login = async (credentials: LoginData) => {
-    try {
-      const { user: userData, token } = await authService.login(credentials)
-      
-      // Set token and user before navigation
-      apiClient.setToken(token)
-      setUser(userData)
-      
-      // Ensure middleware sees authentication regardless of MSW/server path
-      if (typeof document !== 'undefined') {
-        document.cookie = `auth-token=${token}; path=/; samesite=lax; max-age=86400`
-      }
-      
-      // Use setTimeout to ensure state updates before navigation
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 100)
-    } catch (error) {
-      throw error
+    const { user: userData, token } = await authService.login(credentials)
+    
+    // Set token and user before navigation
+    apiClient.setToken(token)
+    setUser(userData)
+    
+    // Ensure middleware sees authentication regardless of MSW/server path
+    if (typeof document !== 'undefined') {
+      document.cookie = `auth-token=${token}; path=/; samesite=lax; max-age=86400`
     }
+    
+    // Use setTimeout to ensure state updates before navigation
+    setTimeout(() => {
+      router.push('/dashboard')
+    }, 100)
   }
 
   const logout = async () => {

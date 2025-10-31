@@ -28,8 +28,12 @@ export default function LoginPage() {
     try {
       await login(data)
       toast.success('Login berhasil!')
-    } catch (error: any) {
-      toast.error(error.message || 'Login gagal. Silakan coba lagi.')
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Login gagal. Silakan coba lagi.'
+      toast.error(message || 'Login gagal. Silakan coba lagi.')
     }
   }
 

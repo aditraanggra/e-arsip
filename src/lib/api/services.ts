@@ -1,6 +1,6 @@
 import { apiClient } from './client'
+import { z } from 'zod'
 import {
-  loginSchema,
   userSchema,
   categorySchema,
   suratMasukSchema,
@@ -16,22 +16,35 @@ import {
   type SuratKeluar,
   type SuratKeluarCreate,
   type PaginatedResponse,
-  type ApiResponse,
   type DashboardMetrics,
+  reportsSummarySchema,
+  type ReportsSummary,
 } from '../schemas'
+import { localApi } from '../mocks/local-api'
+
+const useLocalMocks = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false'
 
 // Auth services
 export const authService = {
   async login(credentials: LoginData): Promise<{ user: User; token: string }> {
+    if (useLocalMocks) {
+      const response = await localApi.auth.login(credentials)
+
+      apiClient.setToken(response.token)
+      return response
+    }
+
+    const loginResponseSchema = apiResponseSchema(
+      z.object({
+        user: userSchema,
+        token: z.string(),
+      })
+    )
+
     const response = await apiClient.post(
       '/auth/login',
       credentials,
-      apiResponseSchema(
-        loginSchema.extend({
-          user: userSchema,
-          token: loginSchema.shape.password, // reuse string schema
-        })
-      )
+      loginResponseSchema
     )
     
     // Set token in client
@@ -44,11 +57,21 @@ export const authService = {
   },
 
   async logout(): Promise<void> {
+    if (useLocalMocks) {
+      await localApi.auth.logout()
+      apiClient.setToken(null)
+      return
+    }
+
     await apiClient.post('/auth/logout')
     apiClient.setToken(null)
   },
 
   async me(): Promise<User> {
+    if (useLocalMocks) {
+      return localApi.auth.me()
+    }
+
     const response = await apiClient.get('/me', apiResponseSchema(userSchema))
     return response.data
   },
@@ -57,6 +80,10 @@ export const authService = {
 // Categories service
 export const categoriesService = {
   async getAll(): Promise<Category[]> {
+    if (useLocalMocks) {
+      return localApi.categories.getAll()
+    }
+
     const response = await apiClient.get(
       '/categories',
       apiResponseSchema(categorySchema.array())
@@ -67,7 +94,7 @@ export const categoriesService = {
 
 // Surat Masuk services
 export const suratMasukService = {
-  async getList(params: {
+  async getAll(params: {
     q?: string
     category_id?: number
     date_from?: string
@@ -78,6 +105,10 @@ export const suratMasukService = {
     per_page?: number
     sort?: string
   } = {}): Promise<PaginatedResponse<SuratMasuk>> {
+    if (useLocalMocks) {
+      return localApi.suratMasuk.getList(params)
+    }
+
     const searchParams = new URLSearchParams()
     
     Object.entries(params).forEach(([key, value]) => {
@@ -93,6 +124,14 @@ export const suratMasukService = {
   },
 
   async getById(id: number): Promise<SuratMasuk> {
+    if (useLocalMocks) {
+      const item = await localApi.suratMasuk.getById(id)
+      if (!item) {
+        throw new Error('Surat masuk tidak ditemukan')
+      }
+      return item
+    }
+
     const response = await apiClient.get(
       `/surat-masuk/${id}`,
       apiResponseSchema(suratMasukSchema)
@@ -101,6 +140,10 @@ export const suratMasukService = {
   },
 
   async create(data: SuratMasukCreate): Promise<SuratMasuk> {
+    if (useLocalMocks) {
+      return localApi.suratMasuk.create(data)
+    }
+
     const response = await apiClient.post(
       '/surat-masuk',
       data,
@@ -110,6 +153,10 @@ export const suratMasukService = {
   },
 
   async update(id: number, data: Partial<SuratMasukCreate>): Promise<SuratMasuk> {
+    if (useLocalMocks) {
+      return localApi.suratMasuk.update(id, data)
+    }
+
     const response = await apiClient.put(
       `/surat-masuk/${id}`,
       data,
@@ -119,13 +166,18 @@ export const suratMasukService = {
   },
 
   async delete(id: number): Promise<void> {
+    if (useLocalMocks) {
+      await localApi.suratMasuk.delete(id)
+      return
+    }
+
     await apiClient.delete(`/surat-masuk/${id}`)
   },
 }
 
 // Surat Keluar services
 export const suratKeluarService = {
-  async getList(params: {
+  async getAll(params: {
     q?: string
     category_id?: number
     date_from?: string
@@ -134,6 +186,10 @@ export const suratKeluarService = {
     per_page?: number
     sort?: string
   } = {}): Promise<PaginatedResponse<SuratKeluar>> {
+    if (useLocalMocks) {
+      return localApi.suratKeluar.getList(params)
+    }
+
     const searchParams = new URLSearchParams()
     
     Object.entries(params).forEach(([key, value]) => {
@@ -149,6 +205,14 @@ export const suratKeluarService = {
   },
 
   async getById(id: number): Promise<SuratKeluar> {
+    if (useLocalMocks) {
+      const item = await localApi.suratKeluar.getById(id)
+      if (!item) {
+        throw new Error('Surat keluar tidak ditemukan')
+      }
+      return item
+    }
+
     const response = await apiClient.get(
       `/surat-keluar/${id}`,
       apiResponseSchema(suratKeluarSchema)
@@ -157,6 +221,10 @@ export const suratKeluarService = {
   },
 
   async create(data: SuratKeluarCreate): Promise<SuratKeluar> {
+    if (useLocalMocks) {
+      return localApi.suratKeluar.create(data)
+    }
+
     const response = await apiClient.post(
       '/surat-keluar',
       data,
@@ -166,6 +234,10 @@ export const suratKeluarService = {
   },
 
   async update(id: number, data: Partial<SuratKeluarCreate>): Promise<SuratKeluar> {
+    if (useLocalMocks) {
+      return localApi.suratKeluar.update(id, data)
+    }
+
     const response = await apiClient.put(
       `/surat-keluar/${id}`,
       data,
@@ -175,6 +247,11 @@ export const suratKeluarService = {
   },
 
   async delete(id: number): Promise<void> {
+    if (useLocalMocks) {
+      await localApi.suratKeluar.delete(id)
+      return
+    }
+
     await apiClient.delete(`/surat-keluar/${id}`)
   },
 }
@@ -187,6 +264,10 @@ export const dashboardService = {
     from?: string
     to?: string
   } = {}): Promise<DashboardMetrics> {
+    if (useLocalMocks) {
+      return localApi.dashboard.getMetrics()
+    }
+
     const searchParams = new URLSearchParams()
     
     Object.entries(params).forEach(([key, value]) => {
@@ -218,7 +299,11 @@ export const reportsService = {
     unit_id?: number
     district?: string
     village?: string
-  } = {}): Promise<any> {
+  } = {}): Promise<ReportsSummary> {
+    if (useLocalMocks) {
+      return localApi.reports.getSummary(params)
+    }
+
     const searchParams = new URLSearchParams()
     
     Object.entries(params).forEach(([key, value]) => {
@@ -230,10 +315,18 @@ export const reportsService = {
     const queryString = searchParams.toString()
     const endpoint = `/reports/summary${queryString ? `?${queryString}` : ''}`
     
-    return apiClient.get(endpoint)
+    const response = await apiClient.get(
+      endpoint,
+      apiResponseSchema(reportsSummarySchema)
+    )
+    return response.data
   },
 
-  async exportReport(data: any): Promise<Blob> {
+  async exportReport(data: Record<string, unknown>): Promise<Blob> {
+    if (useLocalMocks) {
+      return localApi.reports.exportReport()
+    }
+
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/reports/export`, {
       method: 'POST',
       headers: {

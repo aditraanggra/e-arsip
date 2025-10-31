@@ -9,9 +9,14 @@ export const relativeAuthHandlers = [
   http.post('/auth/login', async ({ request }) => {
     await delay(MOCK_LATENCY)
     
-    const body = await request.json() as any
-    
-    if (body.email === 'admin@earsip.com' && body.password === 'password') {
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+    const email = typeof body['email'] === 'string' ? (body['email'] as string) : ''
+    const password = typeof body['password'] === 'string' ? (body['password'] as string) : ''
+
+    if (
+      (email === 'admin@earsip.com' && password === 'password') ||
+      (email === 'admin@example.com' && password === 'password123')
+    ) {
       return HttpResponse.json({
         data: {
           user: mockUser,

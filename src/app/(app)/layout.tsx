@@ -1,10 +1,11 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { AppHeader } from '@/components/layout/app-header'
-import { useMobile } from '@/hooks/use-mobile'
-import { redirect } from 'next/navigation'
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 
 export default function AppLayout({
   children,
@@ -12,7 +13,14 @@ export default function AppLayout({
   children: React.ReactNode
 }) {
   const { isAuthenticated, isLoading } = useAuth()
-  const isMobile = useMobile()
+  const router = useRouter()
+
+  // Client-side redirect when unauthenticated to avoid RSC payload errors
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login')
+    }
+  }, [isLoading, isAuthenticated, router])
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -23,24 +31,22 @@ export default function AppLayout({
     )
   }
 
-  // Redirect to login if not authenticated
-  if (!isAuthenticated) {
-    redirect('/login')
+  // Render nothing briefly while redirecting
+  if (!isLoading && !isAuthenticated) {
+    return null
   }
 
   return (
-    <div className="flex min-h-screen">
-      {!isMobile && (
-        <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
-          <AppSidebar />
-        </div>
-      )}
-      <div className="flex flex-col flex-1 md:pl-64">
-        <AppHeader />
-        <main className="flex-1 p-4 sm:p-6">
-          {children}
-        </main>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-muted/20">
+        <AppSidebar />
+        <SidebarInset className="bg-gradient-to-br from-emerald-50/40 via-white to-yellow-50/30">
+          <AppHeader />
+          <main className="flex w-full flex-1 flex-col px-4 py-4 sm:px-6 sm:py-6 xl:px-8 2xl:px-12 min-w-0">
+            {children}
+          </main>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   )
 }

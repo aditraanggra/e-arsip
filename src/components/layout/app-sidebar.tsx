@@ -59,11 +59,11 @@ export function AppSidebar() {
   const { user, logout } = useAuth()
 
   return (
-    <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-4 py-2">
-          <FileText className="h-6 w-6" />
-          <span className="font-semibold">
+    <Sidebar className='border-r border-emerald-100/70 bg-white/85 backdrop-blur'>
+      <SidebarHeader className='border-b border-sidebar-border'>
+        <div className='flex items-center gap-2 px-4 py-2'>
+          <FileText className='h-6 w-6 text-emerald-600' />
+          <span className='font-semibold text-emerald-700'>
             {process.env.NEXT_PUBLIC_APP_NAME || 'E-Arsip'}
           </span>
         </div>
@@ -78,10 +78,14 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname === item.url || pathname.startsWith(item.url + '/')}
+                    className='hover:bg-emerald-50 hover:text-emerald-700 data-active:bg-emerald-100 data-active:text-emerald-800'
+                    isActive={
+                      pathname === item.url ||
+                      pathname.startsWith(item.url + '/')
+                    }
                   >
                     <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className='h-4 w-4' />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -92,18 +96,18 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
-        <div className="p-4 space-y-2">
-          <div className="text-sm text-muted-foreground">
-            Masuk sebagai: <span className="font-medium">{user?.name}</span>
+      <SidebarFooter className='border-t border-sidebar-border'>
+        <div className='p-4 space-y-2'>
+          <div className='text-sm text-muted-foreground'>
+            Masuk sebagai: <span className='font-medium'>{user?.name}</span>
           </div>
           <Button
-            variant="outline"
-            size="sm"
+            variant='outline'
+            size='sm'
             onClick={logout}
-            className="w-full justify-start"
+            className='w-full justify-start border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800'
           >
-            <LogOut className="h-4 w-4 mr-2" />
+            <LogOut className='h-4 w-4 mr-2' />
             Keluar
           </Button>
         </div>

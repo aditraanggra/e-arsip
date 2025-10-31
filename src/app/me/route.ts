@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { mockUser } from '@/mocks/data'
 
 export async function GET(request: Request) {
-  const authHeader = (request.headers as any).get?.('authorization') || ''
+  const authHeader = request.headers.get('authorization') || ''
   const bearer = typeof authHeader === 'string' ? authHeader : ''
   const isAuthed = bearer.startsWith('Bearer ')
 

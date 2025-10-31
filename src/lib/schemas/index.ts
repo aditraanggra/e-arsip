@@ -22,50 +22,61 @@ export const categorySchema = z.object({
   desc: z.string().optional(),
 })
 
+const categorySummarySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+})
+
 // Surat Masuk schema
 export const suratMasukSchema = z.object({
   id: z.number(),
+  nomor_surat: z.string(),
+  perihal: z.string(),
+  pengirim: z.string(),
+  tanggal: z.string(),
+  tanggal_diterima: z.string(),
+  keterangan: z.string().optional().nullable(),
+  file_path: z.string().optional().nullable(),
   category_id: z.number(),
-  no_agenda: z.string(),
-  date_agenda: z.string(),
-  date_letter: z.string(),
-  sender: z.string(),
-  no_letter: z.string(),
-  subject: z.string(),
-  contact: z.string().optional(),
-  address: z.string().optional(),
-  file: z.string().optional(),
-  dept_disposition: z.string().optional(),
-  desc_disposition: z.string().optional(),
-  district: z.string().optional(),
-  village: z.string().optional(),
+  category: categorySummarySchema,
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 })
 
-export const suratMasukCreateSchema = suratMasukSchema.omit({ 
-  id: true, 
-  created_at: true, 
-  updated_at: true 
+export const suratMasukCreateSchema = z.object({
+  nomor_surat: z.string(),
+  perihal: z.string(),
+  pengirim: z.string(),
+  tanggal: z.string(),
+  tanggal_diterima: z.string(),
+  keterangan: z.string().optional(),
+  file_path: z.string().optional(),
+  category_id: z.number(),
 })
 
 // Surat Keluar schema
 export const suratKeluarSchema = z.object({
   id: z.number(),
+  nomor_surat: z.string(),
+  perihal: z.string(),
+  tujuan: z.string(),
+  tanggal: z.string(),
+  keterangan: z.string().optional().nullable(),
+  file_path: z.string().optional().nullable(),
   category_id: z.number(),
-  date_letter: z.string(),
-  to_letter: z.string(),
-  no_letter: z.string(),
-  subject: z.string(),
-  file: z.string().optional(),
+  category: categorySummarySchema,
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 })
 
-export const suratKeluarCreateSchema = suratKeluarSchema.omit({ 
-  id: true, 
-  created_at: true, 
-  updated_at: true 
+export const suratKeluarCreateSchema = z.object({
+  nomor_surat: z.string(),
+  perihal: z.string(),
+  tujuan: z.string(),
+  tanggal: z.string(),
+  keterangan: z.string().optional(),
+  file_path: z.string().optional(),
+  category_id: z.number(),
 })
 
 // API Response schemas
@@ -103,6 +114,18 @@ export const dashboardMetricsSchema = z.object({
   })),
 })
 
+// Reports schema
+export const reportChartPointSchema = z.object({
+  date: z.string(),
+  surat_masuk: z.number(),
+  surat_keluar: z.number(),
+})
+
+export const reportsSummarySchema = z.object({
+  summary: z.string(),
+  charts: z.array(reportChartPointSchema),
+})
+
 // Export types
 export type LoginData = z.infer<typeof loginSchema>
 export type User = z.infer<typeof userSchema>
@@ -121,3 +144,5 @@ export type ApiResponse<T> = {
   message?: string
 }
 export type DashboardMetrics = z.infer<typeof dashboardMetricsSchema>
+export type ReportChartPoint = z.infer<typeof reportChartPointSchema>
+export type ReportsSummary = z.infer<typeof reportsSummarySchema>

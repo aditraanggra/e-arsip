@@ -18,43 +18,38 @@ export const mockCategories: Category[] = [
   { id: 3, name: 'Pendistribusian', desc: 'Distribusi' },
 ]
 
+const getCategorySnapshot = (id: number) => {
+  const category = mockCategories.find((cat) => cat.id === id) ?? mockCategories[0]
+  return { id: category.id, name: category.name }
+}
+
 // Mock surat masuk data
 export const mockSuratMasuk: SuratMasuk[] = [
   {
     id: 101,
+    nomor_surat: '001/SEKRE/IX/2025',
+    perihal: 'Undangan Rapat Koordinasi',
+    pengirim: 'Kantor Camat',
+    tanggal: '2025-09-03',
+    tanggal_diterima: '2025-09-05',
+    keterangan: 'Mohon hadir tepat waktu dengan membawa dokumen pendukung.',
+    file_path: 'https://example.com/files/undangan-rapat.pdf',
     category_id: 1,
-    no_agenda: '001/SEKRE/IX/2025',
-    date_agenda: '2025-09-05',
-    date_letter: '2025-09-03',
-    sender: 'Kantor Camat',
-    no_letter: '070/123/IX/2025',
-    subject: 'Undangan Rapat',
-    contact: '081234567890',
-    address: 'Jl. Raya 1',
-    file: 'undangan.pdf',
-    dept_disposition: 'Sekretariat',
-    desc_disposition: 'Mohon hadir',
-    district: 'Cianjur',
-    village: 'Muka',
+    category: getCategorySnapshot(1),
     created_at: '2025-09-05T10:00:00Z',
     updated_at: '2025-09-05T10:00:00Z',
   },
   {
     id: 102,
+    nomor_surat: '002/PD/IX/2025',
+    perihal: 'Permohonan Bantuan Pendistribusian',
+    pengirim: 'UPZ Peuteuycondong',
+    tanggal: '2025-09-06',
+    tanggal_diterima: '2025-09-07',
+    keterangan: 'Mohon dilakukan survey lapangan sebelum penyaluran.',
+    file_path: 'https://example.com/files/permohonan-bantuan.pdf',
     category_id: 3,
-    no_agenda: '002/PD/IX/2025',
-    date_agenda: '2025-09-07',
-    date_letter: '2025-09-06',
-    sender: 'UPZ Peuteuycondong',
-    no_letter: 'UPZ/09/2025/02',
-    subject: 'Permohonan Bantuan',
-    contact: '085712345678',
-    address: 'Kp. Janangga',
-    file: 'permohonan.pdf',
-    dept_disposition: 'Pendistribusian',
-    desc_disposition: 'Survey lapangan',
-    district: 'Cibeber',
-    village: 'Peuteuycondong',
+    category: getCategorySnapshot(3),
     created_at: '2025-09-07T14:30:00Z',
     updated_at: '2025-09-07T14:30:00Z',
   },
@@ -64,23 +59,27 @@ export const mockSuratMasuk: SuratMasuk[] = [
 export const mockSuratKeluar: SuratKeluar[] = [
   {
     id: 201,
+    nomor_surat: 'BZN/KU/IX/2025/015',
+    perihal: 'Permintaan Rekening Koran Bank BJB',
+    tujuan: 'Bank BJB',
+    tanggal: '2025-09-08',
+    keterangan: 'Diharapkan rekaman transaksi bulan berjalan.',
+    file_path: 'https://example.com/files/permintaan-rekkoran.pdf',
     category_id: 2,
-    date_letter: '2025-09-08',
-    to_letter: 'Bank BJB',
-    no_letter: 'BZN/KU/IX/2025/015',
-    subject: 'Permintaan Rek Koran',
-    file: 'permintaan.pdf',
+    category: getCategorySnapshot(2),
     created_at: '2025-09-08T09:00:00Z',
     updated_at: '2025-09-08T09:00:00Z',
   },
   {
     id: 202,
+    nomor_surat: 'BZN/UM/IX/2025/021',
+    perihal: 'Pemberitahuan Kegiatan Sosialisasi',
+    tujuan: 'Kecamatan Karangtengah',
+    tanggal: '2025-09-10',
+    keterangan: 'Harap mengirimkan perwakilan untuk kegiatan sosialisasi.',
+    file_path: 'https://example.com/files/pemberitahuan-kegiatan.pdf',
     category_id: 1,
-    date_letter: '2025-09-10',
-    to_letter: 'Kecamatan Karangtengah',
-    no_letter: 'BZN/UM/IX/2025/021',
-    subject: 'Pemberitahuan Kegiatan',
-    file: 'pemberitahuan.pdf',
+    category: getCategorySnapshot(1),
     created_at: '2025-09-10T11:15:00Z',
     updated_at: '2025-09-10T11:15:00Z',
   },
@@ -88,39 +87,47 @@ export const mockSuratKeluar: SuratKeluar[] = [
 
 // Generate additional mock data
 export function generateMockSuratMasuk(count: number): SuratMasuk[] {
-  return Array.from({ length: count }, (_, index) => ({
-    id: 1000 + index,
-    category_id: faker.helpers.arrayElement([1, 2, 3]),
-    no_agenda: `${String(index + 1).padStart(3, '0')}/MOCK/${faker.date.recent().getFullYear()}`,
-    date_agenda: faker.date.recent({ days: 30 }).toISOString().split('T')[0],
-    date_letter: faker.date.recent({ days: 35 }).toISOString().split('T')[0],
-    sender: faker.company.name(),
-    no_letter: `${faker.string.alphanumeric(3).toUpperCase()}/${faker.number.int({ min: 100, max: 999 })}/${faker.date.recent().getFullYear()}`,
-    subject: faker.lorem.sentence(),
-    contact: faker.phone.number(),
-    address: faker.location.streetAddress(),
-    file: `${faker.system.fileName()}.pdf`,
-    dept_disposition: faker.helpers.arrayElement(['Sekretariat', 'Pendistribusian', 'Keuangan']),
-    desc_disposition: faker.lorem.sentence(),
-    district: faker.helpers.arrayElement(['Cianjur', 'Cibeber', 'Karangtengah']),
-    village: faker.helpers.arrayElement(['Muka', 'Peuteuycondong', 'Janangga']),
-    created_at: faker.date.recent({ days: 30 }).toISOString(),
-    updated_at: faker.date.recent({ days: 30 }).toISOString(),
-  }))
+  return Array.from({ length: count }, (_, index) => {
+    const tanggalSurat = faker.date.recent({ days: 45 })
+    const tanggalDiterima = faker.date.soon({ days: 3, refDate: tanggalSurat })
+    const category = faker.helpers.arrayElement(mockCategories)
+
+    return {
+      id: 1000 + index,
+      nomor_surat: `${String(index + 1).padStart(3, '0')}/MOCK/${tanggalSurat.getFullYear()}`,
+      perihal: faker.lorem.sentence(),
+      pengirim: faker.company.name(),
+      tanggal: tanggalSurat.toISOString().split('T')[0],
+      tanggal_diterima: tanggalDiterima.toISOString().split('T')[0],
+      keterangan: faker.lorem.sentence(),
+      file_path: `https://example.com/files/${faker.string.alphanumeric(8).toLowerCase()}.pdf`,
+      category_id: category.id,
+      category: { id: category.id, name: category.name },
+      created_at: faker.date.recent({ days: 30 }).toISOString(),
+      updated_at: faker.date.recent({ days: 30 }).toISOString(),
+    }
+  })
 }
 
 export function generateMockSuratKeluar(count: number): SuratKeluar[] {
-  return Array.from({ length: count }, (_, index) => ({
-    id: 2000 + index,
-    category_id: faker.helpers.arrayElement([1, 2, 3]),
-    date_letter: faker.date.recent({ days: 30 }).toISOString().split('T')[0],
-    to_letter: faker.company.name(),
-    no_letter: `BZN/${faker.string.alphanumeric(2).toUpperCase()}/${faker.date.recent().getFullYear()}/${String(index + 1).padStart(3, '0')}`,
-    subject: faker.lorem.sentence(),
-    file: `${faker.system.fileName()}.pdf`,
-    created_at: faker.date.recent({ days: 30 }).toISOString(),
-    updated_at: faker.date.recent({ days: 30 }).toISOString(),
-  }))
+  return Array.from({ length: count }, (_, index) => {
+    const tanggalSurat = faker.date.recent({ days: 45 })
+    const category = faker.helpers.arrayElement(mockCategories)
+
+    return {
+      id: 2000 + index,
+      nomor_surat: `BZN/${faker.string.alphanumeric(2).toUpperCase()}/${tanggalSurat.getFullYear()}/${String(index + 1).padStart(3, '0')}`,
+      perihal: faker.lorem.sentence(),
+      tujuan: faker.company.name(),
+      tanggal: tanggalSurat.toISOString().split('T')[0],
+      keterangan: faker.lorem.sentence(),
+      file_path: `https://example.com/files/${faker.string.alphanumeric(8).toLowerCase()}.pdf`,
+      category_id: category.id,
+      category: { id: category.id, name: category.name },
+      created_at: faker.date.recent({ days: 30 }).toISOString(),
+      updated_at: faker.date.recent({ days: 30 }).toISOString(),
+    }
+  })
 }
 
 // Mock dashboard metrics

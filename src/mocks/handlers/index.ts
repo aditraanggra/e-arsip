@@ -6,7 +6,7 @@ import {
   allMockSuratKeluar,
   mockDashboardMetrics,
 } from '../data'
-import type { SuratMasuk, SuratKeluar } from '@/lib/schemas'
+import type { SuratMasuk, SuratKeluar, SuratMasukCreate, SuratKeluarCreate } from '@/lib/schemas'
 import { relativeAuthHandlers } from './auth-relative'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.domain.tld/api/v1'
@@ -35,12 +35,12 @@ function paginate<T>(data: T[], page: number = 1, perPage: number = 20) {
 function filterSuratMasuk(data: SuratMasuk[], params: URLSearchParams) {
   let filtered = [...data]
   
-  const q = params.get('q')
+  const q = params.get('q') || params.get('search')
   if (q) {
     filtered = filtered.filter(item => 
-      item.subject.toLowerCase().includes(q.toLowerCase()) ||
-      item.sender.toLowerCase().includes(q.toLowerCase()) ||
-      item.no_letter.toLowerCase().includes(q.toLowerCase())
+      item.perihal.toLowerCase().includes(q.toLowerCase()) ||
+      item.pengirim.toLowerCase().includes(q.toLowerCase()) ||
+      item.nomor_surat.toLowerCase().includes(q.toLowerCase())
     )
   }
   
@@ -51,22 +51,12 @@ function filterSuratMasuk(data: SuratMasuk[], params: URLSearchParams) {
   
   const dateFrom = params.get('date_from')
   if (dateFrom) {
-    filtered = filtered.filter(item => item.date_letter >= dateFrom)
+    filtered = filtered.filter(item => item.tanggal >= dateFrom)
   }
   
   const dateTo = params.get('date_to')
   if (dateTo) {
-    filtered = filtered.filter(item => item.date_letter <= dateTo)
-  }
-  
-  const district = params.get('district')
-  if (district) {
-    filtered = filtered.filter(item => item.district?.toLowerCase().includes(district.toLowerCase()))
-  }
-  
-  const village = params.get('village')
-  if (village) {
-    filtered = filtered.filter(item => item.village?.toLowerCase().includes(village.toLowerCase()))
+    filtered = filtered.filter(item => item.tanggal <= dateTo)
   }
   
   return filtered
@@ -75,12 +65,12 @@ function filterSuratMasuk(data: SuratMasuk[], params: URLSearchParams) {
 function filterSuratKeluar(data: SuratKeluar[], params: URLSearchParams) {
   let filtered = [...data]
   
-  const q = params.get('q')
+  const q = params.get('q') || params.get('search')
   if (q) {
     filtered = filtered.filter(item => 
-      item.subject.toLowerCase().includes(q.toLowerCase()) ||
-      item.to_letter.toLowerCase().includes(q.toLowerCase()) ||
-      item.no_letter.toLowerCase().includes(q.toLowerCase())
+      item.perihal.toLowerCase().includes(q.toLowerCase()) ||
+      item.tujuan.toLowerCase().includes(q.toLowerCase()) ||
+      item.nomor_surat.toLowerCase().includes(q.toLowerCase())
     )
   }
   
@@ -91,12 +81,12 @@ function filterSuratKeluar(data: SuratKeluar[], params: URLSearchParams) {
   
   const dateFrom = params.get('date_from')
   if (dateFrom) {
-    filtered = filtered.filter(item => item.date_letter >= dateFrom)
+    filtered = filtered.filter(item => item.tanggal >= dateFrom)
   }
   
   const dateTo = params.get('date_to')
   if (dateTo) {
-    filtered = filtered.filter(item => item.date_letter <= dateTo)
+    filtered = filtered.filter(item => item.tanggal <= dateTo)
   }
   
   return filtered
@@ -108,9 +98,14 @@ export const handlers = [
   http.post(`${API_BASE_URL}/auth/login`, async ({ request }) => {
     await delay(MOCK_LATENCY)
     
-    const body = await request.json() as any
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+    const email = typeof body['email'] === 'string' ? (body['email'] as string) : ''
+    const password = typeof body['password'] === 'string' ? (body['password'] as string) : ''
     
-    if (body.email === 'admin@earsip.com' && body.password === 'password') {
+    if (
+      (email === 'admin@earsip.com' && password === 'password') ||
+      (email === 'admin@example.com' && password === 'password123')
+    ) {
       return HttpResponse.json({
         data: {
           user: mockUser,
@@ -130,9 +125,14 @@ export const handlers = [
   http.post('/auth/login', async ({ request }) => {
     await delay(MOCK_LATENCY)
     
-    const body = await request.json() as any
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+    const email = typeof body['email'] === 'string' ? (body['email'] as string) : ''
+    const password = typeof body['password'] === 'string' ? (body['password'] as string) : ''
     
-    if (body.email === 'admin@earsip.com' && body.password === 'password') {
+    if (
+      (email === 'admin@earsip.com' && password === 'password') ||
+      (email === 'admin@example.com' && password === 'password123')
+    ) {
       return HttpResponse.json({
         data: {
           user: mockUser,
@@ -237,10 +237,12 @@ export const handlers = [
   http.post(`${API_BASE_URL}/surat-masuk`, async ({ request }) => {
     await delay(MOCK_LATENCY)
     
-    const body = await request.json() as any
+    const body: SuratMasukCreate = await request.json()
+    const category = mockCategories.find(cat => cat.id === body.category_id) ?? mockCategories[0]
     const newItem = {
       id: Math.max(...allMockSuratMasuk.map(s => s.id)) + 1,
       ...body,
+      category: { id: category.id, name: category.name },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
@@ -257,7 +259,7 @@ export const handlers = [
     await delay(MOCK_LATENCY)
     
     const id = parseInt(params.id as string)
-    const body = await request.json() as any
+    const body: Partial<SuratMasukCreate> = await request.json()
     const index = allMockSuratMasuk.findIndex(s => s.id === id)
     
     if (index === -1) {
@@ -267,9 +269,14 @@ export const handlers = [
       )
     }
     
+    const updatedCategoryId = body.category_id ?? allMockSuratMasuk[index].category_id
+    const category = mockCategories.find(cat => cat.id === updatedCategoryId) ?? mockCategories[0]
+    
     allMockSuratMasuk[index] = {
       ...allMockSuratMasuk[index],
       ...body,
+      category_id: updatedCategoryId,
+      category: { id: category.id, name: category.name },
       updated_at: new Date().toISOString(),
     }
     
@@ -334,10 +341,12 @@ export const handlers = [
   http.post(`${API_BASE_URL}/surat-keluar`, async ({ request }) => {
     await delay(MOCK_LATENCY)
     
-    const body = await request.json() as any
+    const body: SuratKeluarCreate = await request.json()
+    const category = mockCategories.find(cat => cat.id === body.category_id) ?? mockCategories[0]
     const newItem = {
       id: Math.max(...allMockSuratKeluar.map(s => s.id)) + 1,
       ...body,
+      category: { id: category.id, name: category.name },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
@@ -354,7 +363,7 @@ export const handlers = [
     await delay(MOCK_LATENCY)
     
     const id = parseInt(params.id as string)
-    const body = await request.json() as any
+    const body: Partial<SuratKeluarCreate> = await request.json()
     const index = allMockSuratKeluar.findIndex(s => s.id === id)
     
     if (index === -1) {
@@ -364,9 +373,14 @@ export const handlers = [
       )
     }
     
+    const updatedCategoryId = body.category_id ?? allMockSuratKeluar[index].category_id
+    const category = mockCategories.find(cat => cat.id === updatedCategoryId) ?? mockCategories[0]
+    
     allMockSuratKeluar[index] = {
       ...allMockSuratKeluar[index],
       ...body,
+      category_id: updatedCategoryId,
+      category: { id: category.id, name: category.name },
       updated_at: new Date().toISOString(),
     }
     
@@ -404,6 +418,14 @@ export const handlers = [
     })
   }),
 
+  // Dashboard endpoint - Relative path for same-origin requests
+  http.get('/dashboard/metrics', async () => {
+    await delay(MOCK_LATENCY)
+    return HttpResponse.json({
+      data: mockDashboardMetrics,
+    })
+  }),
+
   // Reports endpoints
   http.get(`${API_BASE_URL}/reports/summary`, async () => {
     await delay(MOCK_LATENCY)
@@ -429,5 +451,44 @@ export const handlers = [
         },
       }
     )
+  }),
+
+  // Document search endpoint
+  http.get(`${API_BASE_URL}/documents/search`, async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const url = new URL(request.url)
+    const query = url.searchParams.get('q') || ''
+    const type = url.searchParams.get('type') || 'all'
+    const page = parseInt(url.searchParams.get('page') || '1')
+    const perPage = parseInt(url.searchParams.get('per_page') || '10')
+    
+    let results = []
+    
+  if (type === 'incoming' || type === 'all') {
+      const filteredIncoming = allMockSuratMasuk.filter(doc => 
+        doc.perihal.toLowerCase().includes(query.toLowerCase()) ||
+        doc.pengirim.toLowerCase().includes(query.toLowerCase()) ||
+        doc.nomor_surat.toLowerCase().includes(query.toLowerCase())
+      ).map(doc => ({
+        ...doc,
+        document_type: 'incoming'
+      }))
+      results = [...results, ...filteredIncoming]
+  }
+  
+  if (type === 'outgoing' || type === 'all') {
+      const filteredOutgoing = allMockSuratKeluar.filter(doc => 
+        doc.perihal.toLowerCase().includes(query.toLowerCase()) ||
+        doc.tujuan.toLowerCase().includes(query.toLowerCase()) ||
+        doc.nomor_surat.toLowerCase().includes(query.toLowerCase())
+      ).map(doc => ({
+        ...doc,
+        document_type: 'outgoing'
+      }))
+      results = [...results, ...filteredOutgoing]
+    }
+    
+    return HttpResponse.json(paginate(results, page, perPage))
   }),
 ]

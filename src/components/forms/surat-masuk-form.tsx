@@ -75,7 +75,9 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
         tanggal: z.date({ required_error: 'Tanggal wajib diisi' }),
         tanggal_diterima: z.date({ required_error: 'Tanggal diterima wajib diisi' }),
         keterangan: z.string().optional(),
-        category_id: z.number({ required_error: 'Kategori wajib dipilih' }),
+        category_id: z
+          .number({ required_error: 'Kategori wajib dipilih' })
+          .min(1, 'Kategori wajib dipilih'),
         file_path: z.string().optional(),
       })
     ),
@@ -100,7 +102,7 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
         tanggal_diterima: new Date(initialData.tanggal_diterima),
         keterangan: initialData.keterangan || '',
         file_path: initialData.file_path || '',
-        category_id: initialData.category.id,
+        category_id: initialData.category_id,
       })
     }
   }, [initialData, isEdit, form])
@@ -108,17 +110,34 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
   const onSubmit = async (values: SuratMasukFormValues) => {
     setIsSubmitting(true)
     try {
+      const payload = {
+        nomor_surat: values.nomor_surat,
+        perihal: values.perihal,
+        pengirim: values.pengirim,
+        tanggal: values.tanggal.toISOString().split('T')[0],
+        tanggal_diterima: values.tanggal_diterima.toISOString().split('T')[0],
+        keterangan: values.keterangan?.trim() || undefined,
+        file_path: values.file_path?.trim() || undefined,
+        category_id: values.category_id,
+      }
+
       if (isEdit && initialData) {
-        await suratMasukService.update(initialData.id, values)
+        await suratMasukService.update(initialData.id, payload)
         toast.success('Surat masuk berhasil diperbarui')
         router.push(`/surat-masuk/${initialData.id}`)
+        router.refresh()
       } else {
-        const result = await suratMasukService.create(values)
+        const result = await suratMasukService.create(payload)
         toast.success('Surat masuk berhasil dibuat')
         router.push(`/surat-masuk/${result.id}`)
+        router.refresh()
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Terjadi kesalahan saat menyimpan data')
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Terjadi kesalahan saat menyimpan data'
+      toast.error(message || 'Terjadi kesalahan saat menyimpan data')
     } finally {
       setIsSubmitting(false)
     }
