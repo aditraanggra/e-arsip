@@ -78,7 +78,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    className='hover:bg-emerald-50 hover:text-emerald-700 data-active:bg-emerald-100 data-active:text-emerald-800'
+                    className='bg-gray-100 text-gray-700 hover:!bg-gray-200 hover:!text-gray-900 data-[active=true]:!bg-emerald-100 data-[active=true]:!text-emerald-800 data-[active=true]:hover:!bg-emerald-100 data-[active=true]:hover:!text-emerald-800'
                     isActive={
                       pathname === item.url ||
                       pathname.startsWith(item.url + '/')
