@@ -1,13 +1,11 @@
-import { apiClient } from './client'
 import { z } from 'zod'
+import { apiClient } from './client'
 import {
   userSchema,
   categorySchema,
-  suratMasukSchema,
-  suratKeluarSchema,
   dashboardMetricsSchema,
-  paginatedResponseSchema,
-  apiResponseSchema,
+  suratMasukApiSchema,
+  suratKeluarApiSchema,
   type LoginData,
   type User,
   type Category,
@@ -21,8 +19,22 @@ import {
   type ReportsSummary,
 } from '../schemas'
 import { localApi } from '../mocks/local-api'
+import {
+  mapSuratMasukFromApi,
+  mapSuratMasukPayload,
+  mapSuratKeluarFromApi,
+  mapSuratKeluarPayload,
+  parseApiResponse,
+  parsePaginatedSuratKeluar,
+  parsePaginatedSuratMasuk,
+} from './transformers'
 
 const useLocalMocks = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false'
+
+const loginPayloadSchema = z.object({
+  user: userSchema,
+  token: z.string(),
+}).strict()
 
 // Auth services
 export const authService = {
@@ -34,25 +46,14 @@ export const authService = {
       return response
     }
 
-    const loginResponseSchema = apiResponseSchema(
-      z.object({
-        user: userSchema,
-        token: z.string(),
-      })
-    )
+    const raw = await apiClient.post('/login', credentials)
+    const parsed = parseApiResponse(loginPayloadSchema, raw)
 
-    const response = await apiClient.post(
-      '/auth/login',
-      credentials,
-      loginResponseSchema
-    )
-    
-    // Set token in client
-    apiClient.setToken(response.data.token)
-    
+    apiClient.setToken(parsed.token)
+
     return {
-      user: response.data.user,
-      token: response.data.token,
+      user: parsed.user,
+      token: parsed.token,
     }
   },
 
@@ -63,7 +64,7 @@ export const authService = {
       return
     }
 
-    await apiClient.post('/auth/logout')
+    await apiClient.post('/logout')
     apiClient.setToken(null)
   },
 
@@ -72,8 +73,8 @@ export const authService = {
       return localApi.auth.me()
     }
 
-    const response = await apiClient.get('/me', apiResponseSchema(userSchema))
-    return response.data
+    const raw = await apiClient.get('/user')
+    return parseApiResponse(userSchema, raw)
   },
 }
 
@@ -84,11 +85,8 @@ export const categoriesService = {
       return localApi.categories.getAll()
     }
 
-    const response = await apiClient.get(
-      '/categories',
-      apiResponseSchema(categorySchema.array())
-    )
-    return response.data
+    const raw = await apiClient.get('/categories')
+    return parseApiResponse(categorySchema.array(), raw)
   },
 }
 
@@ -110,17 +108,37 @@ export const suratMasukService = {
     }
 
     const searchParams = new URLSearchParams()
-    
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== '') {
-        searchParams.append(key, value.toString())
-      }
-    })
-    
+
+    const {
+      q,
+      page,
+      per_page,
+      category_id,
+      sort,
+      date_from,
+      date_to,
+      district,
+      village,
+      ...rest
+    } = params
+
+    const keyword = q ?? (rest as { search?: string }).search
+
+    if (keyword) searchParams.set('q', keyword)
+    if (typeof category_id === 'number') searchParams.set('category_id', String(category_id))
+    if (date_from) searchParams.set('date_from', date_from)
+    if (date_to) searchParams.set('date_to', date_to)
+    if (district) searchParams.set('district', district)
+    if (village) searchParams.set('village', village)
+    if (sort) searchParams.set('sort', sort)
+    if (page) searchParams.set('page', String(page))
+    if (per_page) searchParams.set('per_page', String(per_page))
+
     const queryString = searchParams.toString()
     const endpoint = `/surat-masuk${queryString ? `?${queryString}` : ''}`
-    
-    return apiClient.get(endpoint, paginatedResponseSchema(suratMasukSchema))
+
+    const raw = await apiClient.get(endpoint)
+    return parsePaginatedSuratMasuk(raw)
   },
 
   async getById(id: number): Promise<SuratMasuk> {
@@ -132,11 +150,9 @@ export const suratMasukService = {
       return item
     }
 
-    const response = await apiClient.get(
-      `/surat-masuk/${id}`,
-      apiResponseSchema(suratMasukSchema)
-    )
-    return response.data
+    const raw = await apiClient.get(`/surat-masuk/${id}`)
+    const parsed = parseApiResponse(suratMasukApiSchema, raw)
+    return mapSuratMasukFromApi(parsed)
   },
 
   async create(data: SuratMasukCreate): Promise<SuratMasuk> {
@@ -144,12 +160,10 @@ export const suratMasukService = {
       return localApi.suratMasuk.create(data)
     }
 
-    const response = await apiClient.post(
-      '/surat-masuk',
-      data,
-      apiResponseSchema(suratMasukSchema)
-    )
-    return response.data
+    const payload = mapSuratMasukPayload(data)
+    const raw = await apiClient.post('/surat-masuk', payload)
+    const parsed = parseApiResponse(suratMasukApiSchema, raw)
+    return mapSuratMasukFromApi(parsed)
   },
 
   async update(id: number, data: Partial<SuratMasukCreate>): Promise<SuratMasuk> {
@@ -157,12 +171,10 @@ export const suratMasukService = {
       return localApi.suratMasuk.update(id, data)
     }
 
-    const response = await apiClient.put(
-      `/surat-masuk/${id}`,
-      data,
-      apiResponseSchema(suratMasukSchema)
-    )
-    return response.data
+    const payload = mapSuratMasukPayload(data)
+    const raw = await apiClient.put(`/surat-masuk/${id}`, payload)
+    const parsed = parseApiResponse(suratMasukApiSchema, raw)
+    return mapSuratMasukFromApi(parsed)
   },
 
   async delete(id: number): Promise<void> {
@@ -191,17 +203,33 @@ export const suratKeluarService = {
     }
 
     const searchParams = new URLSearchParams()
-    
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== '') {
-        searchParams.append(key, value.toString())
-      }
-    })
-    
+
+    const {
+      q,
+      page,
+      per_page,
+      category_id,
+      sort,
+      date_from,
+      date_to,
+      ...rest
+    } = params
+
+    const keyword = q ?? (rest as { search?: string }).search
+
+    if (keyword) searchParams.set('q', keyword)
+    if (typeof category_id === 'number') searchParams.set('category_id', String(category_id))
+    if (date_from) searchParams.set('date_from', date_from)
+    if (date_to) searchParams.set('date_to', date_to)
+    if (sort) searchParams.set('sort', sort)
+    if (page) searchParams.set('page', String(page))
+    if (per_page) searchParams.set('per_page', String(per_page))
+
     const queryString = searchParams.toString()
     const endpoint = `/surat-keluar${queryString ? `?${queryString}` : ''}`
     
-    return apiClient.get(endpoint, paginatedResponseSchema(suratKeluarSchema))
+    const raw = await apiClient.get(endpoint)
+    return parsePaginatedSuratKeluar(raw)
   },
 
   async getById(id: number): Promise<SuratKeluar> {
@@ -213,11 +241,9 @@ export const suratKeluarService = {
       return item
     }
 
-    const response = await apiClient.get(
-      `/surat-keluar/${id}`,
-      apiResponseSchema(suratKeluarSchema)
-    )
-    return response.data
+    const raw = await apiClient.get(`/surat-keluar/${id}`)
+    const parsed = parseApiResponse(suratKeluarApiSchema, raw)
+    return mapSuratKeluarFromApi(parsed)
   },
 
   async create(data: SuratKeluarCreate): Promise<SuratKeluar> {
@@ -225,12 +251,10 @@ export const suratKeluarService = {
       return localApi.suratKeluar.create(data)
     }
 
-    const response = await apiClient.post(
-      '/surat-keluar',
-      data,
-      apiResponseSchema(suratKeluarSchema)
-    )
-    return response.data
+    const payload = mapSuratKeluarPayload(data)
+    const raw = await apiClient.post('/surat-keluar', payload)
+    const parsed = parseApiResponse(suratKeluarApiSchema, raw)
+    return mapSuratKeluarFromApi(parsed)
   },
 
   async update(id: number, data: Partial<SuratKeluarCreate>): Promise<SuratKeluar> {
@@ -238,12 +262,10 @@ export const suratKeluarService = {
       return localApi.suratKeluar.update(id, data)
     }
 
-    const response = await apiClient.put(
-      `/surat-keluar/${id}`,
-      data,
-      apiResponseSchema(suratKeluarSchema)
-    )
-    return response.data
+    const payload = mapSuratKeluarPayload(data)
+    const raw = await apiClient.put(`/surat-keluar/${id}`, payload)
+    const parsed = parseApiResponse(suratKeluarApiSchema, raw)
+    return mapSuratKeluarFromApi(parsed)
   },
 
   async delete(id: number): Promise<void> {
@@ -279,11 +301,8 @@ export const dashboardService = {
     const queryString = searchParams.toString()
     const endpoint = `/dashboard/metrics${queryString ? `?${queryString}` : ''}`
     
-    const response = await apiClient.get(
-      endpoint,
-      apiResponseSchema(dashboardMetricsSchema)
-    )
-    return response.data
+    const raw = await apiClient.get(endpoint)
+    return parseApiResponse(dashboardMetricsSchema, raw)
   },
 }
 
@@ -315,11 +334,8 @@ export const reportsService = {
     const queryString = searchParams.toString()
     const endpoint = `/reports/summary${queryString ? `?${queryString}` : ''}`
     
-    const response = await apiClient.get(
-      endpoint,
-      apiResponseSchema(reportsSummarySchema)
-    )
-    return response.data
+    const raw = await apiClient.get(endpoint)
+    return parseApiResponse(reportsSummarySchema, raw)
   },
 
   async exportReport(data: Record<string, unknown>): Promise<Blob> {
@@ -327,19 +343,6 @@ export const reportsService = {
       return localApi.reports.exportReport()
     }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/reports/export`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiClient.getToken()}`,
-      },
-      body: JSON.stringify(data),
-    })
-    
-    if (!response.ok) {
-      throw new Error('Export failed')
-    }
-    
-    return response.blob()
+    return apiClient.download('/reports/export', data)
   },
 }

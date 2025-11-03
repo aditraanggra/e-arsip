@@ -31,22 +31,48 @@ export default function SuratMasukPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const page = Number(searchParams.get('page') || '1')
-  const perPage = Number(searchParams.get('per_page') || process.env.NEXT_PUBLIC_DEFAULT_PAGE_SIZE || '10')
-  const search = searchParams.get('search') || ''
+  const perPage = Number(
+    searchParams.get('per_page') ||
+      process.env.NEXT_PUBLIC_DEFAULT_PAGE_SIZE ||
+      '10'
+  )
+  const search = searchParams.get('q') || ''
   const categoryIdParam = searchParams.get('category_id')
   const categoryIdNumber = categoryIdParam ? Number(categoryIdParam) : undefined
   const categoryFilter = Number.isNaN(categoryIdNumber) ? undefined : categoryIdNumber
+  const dateFromParam = searchParams.get('date_from') || ''
+  const dateToParam = searchParams.get('date_to') || ''
+  const districtParam = searchParams.get('district') || ''
+  const villageParam = searchParams.get('village') || ''
   
   const [searchInput, setSearchInput] = useState(search)
   const [selectedCategory, setSelectedCategory] = useState(categoryIdParam ?? 'all')
+  const [dateFromInput, setDateFromInput] = useState(dateFromParam)
+  const [dateToInput, setDateToInput] = useState(dateToParam)
+  const [districtInput, setDistrictInput] = useState(districtParam)
+  const [villageInput, setVillageInput] = useState(villageParam)
 
   const { data: suratMasukData, isLoading: isLoadingSuratMasuk } = useQuery({
-    queryKey: ['surat-masuk', page, perPage, search, categoryIdParam ?? 'all'],
+    queryKey: [
+      'surat-masuk',
+      page,
+      perPage,
+      search,
+      categoryIdParam ?? 'all',
+      dateFromParam,
+      dateToParam,
+      districtParam,
+      villageParam,
+    ],
     queryFn: () => suratMasukService.getAll({ 
       page, 
       per_page: perPage,
-      search,
-      category_id: categoryFilter
+      q: search,
+      category_id: categoryFilter,
+      date_from: dateFromParam || undefined,
+      date_to: dateToParam || undefined,
+      district: districtParam || undefined,
+      village: villageParam || undefined,
     }),
   })
 
@@ -63,15 +89,26 @@ export default function SuratMasukPage() {
     setSelectedCategory(categoryIdParam ?? 'all')
   }, [categoryIdParam])
 
+  useEffect(() => {
+    setDateFromInput(dateFromParam)
+    setDateToInput(dateToParam)
+    setDistrictInput(districtParam)
+    setVillageInput(villageParam)
+  }, [dateFromParam, dateToParam, districtParam, villageParam])
+
   const handleSearch = () => {
     const params = new URLSearchParams()
     params.set('page', '1')
     params.set('per_page', perPage.toString())
-    
-    if (searchInput) params.set('search', searchInput)
+
+    if (searchInput) params.set('q', searchInput)
     if (selectedCategory && selectedCategory !== 'all') {
       params.set('category_id', selectedCategory)
     }
+    if (dateFromInput) params.set('date_from', dateFromInput)
+    if (dateToInput) params.set('date_to', dateToInput)
+    if (districtInput) params.set('district', districtInput)
+    if (villageInput) params.set('village', villageInput)
     
     router.push(`/surat-masuk?${params.toString()}`)
   }
@@ -146,14 +183,42 @@ export default function SuratMasukPage() {
         <Button onClick={handleSearch}>Filter</Button>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Input
+          type="date"
+          value={dateFromInput}
+          onChange={(event) => setDateFromInput(event.target.value)}
+          placeholder="Tanggal dari"
+        />
+        <Input
+          type="date"
+          value={dateToInput}
+          onChange={(event) => setDateToInput(event.target.value)}
+          placeholder="Tanggal sampai"
+        />
+        <Input
+          value={districtInput}
+          onChange={(event) => setDistrictInput(event.target.value)}
+          placeholder="Kecamatan"
+        />
+        <Input
+          value={villageInput}
+          onChange={(event) => setVillageInput(event.target.value)}
+          placeholder="Desa/Kelurahan"
+        />
+      </div>
+
       <div className="border rounded-md">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>No. Agenda</TableHead>
               <TableHead>No. Surat</TableHead>
               <TableHead>Perihal</TableHead>
               <TableHead>Pengirim</TableHead>
-              <TableHead>Tanggal</TableHead>
+              <TableHead>Tgl Agenda</TableHead>
+              <TableHead>Tgl Surat</TableHead>
+              <TableHead>Wilayah</TableHead>
               <TableHead>Kategori</TableHead>
               <TableHead className="text-right">Aksi</TableHead>
             </TableRow>
@@ -162,17 +227,20 @@ export default function SuratMasukPage() {
             {isLoadingSuratMasuk ? (
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index}>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
                 </TableRow>
               ))
             ) : suratMasukData?.data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={9} className="text-center py-8">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <FileText className="h-12 w-12 mb-2" />
                     <p>Tidak ada data surat masuk</p>
@@ -182,12 +250,29 @@ export default function SuratMasukPage() {
             ) : (
               suratMasukData?.data.map((surat) => (
                 <TableRow key={surat.id}>
+                  <TableCell>{surat.no_agenda || '-'}</TableCell>
                   <TableCell>{surat.nomor_surat}</TableCell>
                   <TableCell>{surat.perihal}</TableCell>
-                  <TableCell>{surat.pengirim}</TableCell>
-                  <TableCell>{new Date(surat.tanggal).toLocaleDateString('id-ID')}</TableCell>
+                  <TableCell>{surat.pengirim || '-'}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{surat.category.name}</Badge>
+                    {surat.tanggal_diterima
+                      ? new Date(surat.tanggal_diterima).toLocaleDateString('id-ID')
+                      : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {surat.tanggal
+                      ? new Date(surat.tanggal).toLocaleDateString('id-ID')
+                      : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {[surat.district, surat.village]
+                      .filter(Boolean)
+                      .join(' • ') || '-'}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {surat.category?.name || `#${surat.category_id}`}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

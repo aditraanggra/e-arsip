@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { loginSchema, type LoginData } from '@/lib/schemas'
 import { Button } from '@/components/ui/button'
@@ -14,7 +15,8 @@ import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const { login } = useAuth()
+  const router = useRouter()
+  const { login, isAuthenticated } = useAuth()
   
   const {
     register,
@@ -36,6 +38,12 @@ export default function LoginPage() {
       toast.error(message || 'Login gagal. Silakan coba lagi.')
     }
   }
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/dashboard')
+    }
+  }, [isAuthenticated, router])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">

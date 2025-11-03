@@ -50,7 +50,7 @@ export default function SuratMasukDetailPage() {
               {isLoading ? (
                 <Skeleton className="h-4 w-40" />
               ) : (
-                `No. Surat: ${surat?.nomor_surat}`
+                `No. Surat: ${surat?.nomor_surat ?? '-'}`
               )}
             </p>
           </div>
@@ -79,7 +79,7 @@ export default function SuratMasukDetailPage() {
       ) : (
         <Card className="border-none bg-white/95 shadow-sm ring-1 ring-emerald-100">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-emerald-900 text-xl 2xl:text-2xl">{surat?.perihal}</CardTitle>
+            <CardTitle className="text-emerald-900 text-xl 2xl:text-2xl">{surat?.perihal || '-'}</CardTitle>
             <p className="text-sm text-muted-foreground">
               Ringkasan detail surat masuk berikut dapat digunakan untuk keperluan disposisi dan arsip.
             </p>
@@ -89,36 +89,60 @@ export default function SuratMasukDetailPage() {
               <div className="space-y-4 rounded-lg border border-emerald-100/70 bg-emerald-50/40 p-4">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-emerald-700">Nomor Surat</p>
-                  <p className="mt-1 text-sm font-medium text-emerald-900">{surat?.nomor_surat}</p>
+                  <p className="mt-1 text-sm font-medium text-emerald-900">{surat?.nomor_surat ?? '-'}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-emerald-700">Pengirim</p>
-                  <p className="mt-1 text-sm font-medium text-emerald-900">{surat?.pengirim}</p>
+                  <p className="mt-1 text-sm font-medium text-emerald-900">{surat?.pengirim || '-'}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-emerald-700">Tanggal Surat</p>
-                  <p className="mt-1 text-sm font-medium text-emerald-900">{new Date(surat?.tanggal || '').toLocaleDateString('id-ID')}</p>
+                  <p className="mt-1 text-sm font-medium text-emerald-900">
+                    {surat?.tanggal ? new Date(surat.tanggal).toLocaleDateString('id-ID') : '-'}
+                  </p>
                 </div>
               </div>
               <div className="space-y-4 rounded-lg border border-emerald-100/70 bg-white p-4 shadow-sm">
                 <div>
+                  <p className="text-xs uppercase tracking-wide text-emerald-700">Nomor Agenda</p>
+                  <p className="mt-1 text-sm font-medium text-emerald-900">{surat?.no_agenda || '-'}</p>
+                </div>
+                <div>
                   <p className="text-xs uppercase tracking-wide text-emerald-700">Kategori</p>
-                  <Badge variant="outline">{surat?.category.name}</Badge>
+                  <Badge variant="outline">{surat?.category?.name || `#${surat?.category_id ?? '-'}`}</Badge>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-emerald-700">Tanggal Diterima</p>
-                  <p className="mt-1 text-sm font-medium text-emerald-900">{new Date(surat?.tanggal_diterima || '').toLocaleDateString('id-ID')}</p>
+                  <p className="mt-1 text-sm font-medium text-emerald-900">
+                    {surat?.tanggal_diterima
+                      ? new Date(surat.tanggal_diterima).toLocaleDateString('id-ID')
+                      : '-'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-emerald-700">Dibuat pada</p>
-                  <p className="mt-1 text-sm font-medium text-emerald-900">{new Date(surat?.created_at || '').toLocaleString('id-ID')}</p>
+                  <p className="mt-1 text-sm font-medium text-emerald-900">
+                    {surat?.created_at
+                      ? new Date(surat.created_at).toLocaleString('id-ID')
+                      : '-'}
+                  </p>
                 </div>
               </div>
               <div className="space-y-4 rounded-lg border border-yellow-100/70 bg-yellow-50/50 p-4">
-                <p className="text-xs uppercase tracking-wide text-yellow-800">Status Arsip</p>
-                <p className="text-sm text-yellow-800">
-                  Informasi ini membantu memastikan surat ditindaklanjuti sesuai disposisi dan tenggat waktu.
-                </p>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-yellow-800">Wilayah</p>
+                  <p className="mt-1 text-sm font-medium text-yellow-900">
+                    {[surat?.district, surat?.village].filter(Boolean).join(' • ') || '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-yellow-800">Kontak</p>
+                  <p className="mt-1 text-sm font-medium text-yellow-900">{surat?.contact || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-yellow-800">Alamat</p>
+                  <p className="mt-1 text-sm text-yellow-900">{surat?.address || '-'}</p>
+                </div>
               </div>
             </div>
             
@@ -135,6 +159,25 @@ export default function SuratMasukDetailPage() {
                     Lihat Dokumen
                   </a>
                 </Button>
+              </div>
+            )}
+            {(surat?.dept_disposition || surat?.desc_disposition) && (
+              <div className="rounded-lg border border-emerald-100 bg-white/80 p-4">
+                <p className="text-xs uppercase tracking-wide text-emerald-700">Disposisi</p>
+                <dl className="mt-2 space-y-2 text-sm text-emerald-900">
+                  {surat?.dept_disposition && (
+                    <div>
+                      <dt className="font-semibold">Bagian</dt>
+                      <dd>{surat.dept_disposition}</dd>
+                    </div>
+                  )}
+                  {surat?.desc_disposition && (
+                    <div>
+                      <dt className="font-semibold">Instruksi</dt>
+                      <dd>{surat.desc_disposition}</dd>
+                    </div>
+                  )}
+                </dl>
               </div>
             )}
           </CardContent>

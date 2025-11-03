@@ -1,10 +1,21 @@
 import { z } from 'zod'
+import { toast } from 'sonner'
+import { logClientError } from '@/lib/observability'
 
-class ApiError extends Error {
+const REQUEST_TIMEOUT_MS = 15_000
+const GET_RETRY_DELAYS_MS = [300, 800]
+
+type RequestOptions<T> = {
+  schema?: z.ZodSchema<T>
+  retries?: number
+}
+
+export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public response?: unknown
+    public response?: unknown,
+    public endpoint?: string
   ) {
     super(message)
     this.name = 'ApiError'
@@ -12,141 +23,273 @@ class ApiError extends Error {
 }
 
 class ApiClient {
-  private baseURL: string
+  private readonly baseURL: string
   private token: string | null = null
+  private readonly clientVersion =
+    process.env.NEXT_PUBLIC_APP_VERSION || process.env.NEXT_PUBLIC_APP_NAME || 'e-arsip'
 
   constructor() {
     const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false'
-    // When mocks are enabled, use same-origin requests so MSW can intercept.
-    this.baseURL = useMocks ? '' : (process.env.NEXT_PUBLIC_API_BASE_URL || '')
-    
-    // Initialize token from localStorage if available
-    if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('auth_token')
-    }
+    this.baseURL = useMocks ? '' : (process.env.NEXT_PUBLIC_API_BASE_URL ?? '')
   }
 
   setToken(token: string | null) {
     this.token = token
-    if (typeof window !== 'undefined') {
-      if (token) {
-        localStorage.setItem('auth_token', token)
-      } else {
-        localStorage.removeItem('auth_token')
-      }
-    }
   }
 
   getToken(): string | null {
     return this.token
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {},
-    schema?: z.ZodSchema<T>
-  ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`
-    
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...options.headers,
+  private buildHeaders(inputHeaders?: HeadersInit, body?: BodyInit | null) {
+    const headers = new Headers(inputHeaders ?? {})
+    headers.set('Accept', 'application/json')
+    headers.set('X-Client-Version', this.clientVersion)
+    headers.set('X-Request-ID', this.generateRequestId())
+
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
+    if (!headers.has('Content-Type') && !isFormData) {
+      headers.set('Content-Type', 'application/json')
     }
 
-    if (this.token) {
-      headers.Authorization = `Bearer ${this.token}`
+    if (this.token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${this.token}`)
     }
 
-    const config: RequestInit = {
-      ...options,
-      headers,
+    return headers
+  }
+
+  private generateRequestId() {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      return crypto.randomUUID()
     }
+    return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  }
+
+  private async fetchWithTimeout(url: string, init: RequestInit) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
     try {
-      const response = await fetch(url, config)
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Clear token and redirect to login
-          this.setToken(null)
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login'
-          }
-        }
-        
-        const errorData = (await response.json().catch(() => undefined)) as unknown
-        const errorMessage =
-          errorData &&
-          typeof errorData === 'object' &&
-          'message' in errorData &&
-          typeof (errorData as { message?: unknown }).message === 'string'
-            ? (errorData as { message: string }).message
-            : undefined
-        throw new ApiError(
-          errorMessage || `HTTP ${response.status}`,
-          response.status,
-          errorData
-        )
-      }
-
-      const data = (await response.json()) as unknown
-      
-      if (schema) {
-        return schema.parse(data)
-      }
-      
-      return data as T
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error
-      }
-      
-      // Network or parsing error
-      throw new ApiError(
-        error instanceof Error ? error.message : 'Network error',
-        0
-      )
+      return await fetch(url, {
+        ...init,
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeoutId)
     }
   }
 
-  // GET request with retry logic for light operations
-  async get<T>(endpoint: string, schema?: z.ZodSchema<T>, retries = 1): Promise<T> {
-    let lastError: unknown
-    
-    for (let i = 0; i <= retries; i++) {
-      try {
-        return await this.request(endpoint, { method: 'GET' }, schema)
-      } catch (error) {
-        lastError = error
-        if (i < retries && error instanceof ApiError && error.status >= 500) {
-          // Only retry on server errors
-          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
-          continue
+  private shouldRetry(status: number, attempt: number, maxAttempts: number) {
+    if (attempt >= maxAttempts - 1) {
+      return false
+    }
+
+    if (status === 429) {
+      return true
+    }
+
+    return status >= 500 && status < 600
+  }
+
+  private delayWithAttempt(attempt: number) {
+    const baseDelay =
+      GET_RETRY_DELAYS_MS[attempt] ??
+      GET_RETRY_DELAYS_MS[GET_RETRY_DELAYS_MS.length - 1] *
+        2 ** (attempt - GET_RETRY_DELAYS_MS.length + 1)
+    return new Promise((resolve) => setTimeout(resolve, baseDelay))
+  }
+
+  private async delayFromResponse(response: Response, attempt: number) {
+    const retryAfter = response.headers.get('Retry-After')
+    if (retryAfter) {
+      const seconds = Number(retryAfter)
+      if (!Number.isNaN(seconds)) {
+        await new Promise((resolve) => setTimeout(resolve, seconds * 1000))
+        return
+      }
+
+      const retryDate = new Date(retryAfter)
+      if (!Number.isNaN(retryDate.getTime())) {
+        const delay = retryDate.getTime() - Date.now()
+        if (delay > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delay))
+          return
         }
-        break
       }
     }
-    
+
+    await this.delayWithAttempt(attempt)
+  }
+
+  private handleAuthErrors(status: number) {
+    if (status === 401) {
+      this.setToken(null)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('api:unauthorized'))
+        window.location.assign('/login')
+      }
+      return
+    }
+
+    if (status === 403) {
+      if (typeof window !== 'undefined') {
+        toast.error('Akses ditolak.')
+      }
+    }
+  }
+
+  private async parseResponse<T>(
+    response: Response,
+    endpoint: string,
+    schema?: z.ZodSchema<T>
+  ): Promise<T> {
+    if (response.status === 204) {
+      return undefined as T
+    }
+
+    const contentType = response.headers.get('Content-Type') || ''
+    const isJson = contentType.includes('application/json')
+
+    if (!isJson) {
+      throw new ApiError(
+        'Respons tidak dalam format JSON',
+        response.status,
+        undefined,
+        endpoint
+      )
+    }
+
+    const data = (await response.json()) as unknown
+    if (!schema) {
+      return data as T
+    }
+
+    return schema.parse(data)
+  }
+
+  private async buildError(
+    response: Response,
+    endpoint: string
+  ): Promise<ApiError> {
+    let errorPayload: unknown
+    try {
+      errorPayload = await response.clone().json()
+    } catch {
+      errorPayload = await response.text().catch(() => undefined)
+    }
+
+    const message =
+      typeof errorPayload === 'object' &&
+      errorPayload !== null &&
+      'message' in errorPayload &&
+      typeof (errorPayload as { message?: unknown }).message === 'string'
+        ? (errorPayload as { message: string }).message
+        : `HTTP ${response.status}`
+
+    return new ApiError(message, response.status, errorPayload, endpoint)
+  }
+
+  private async request<T>(
+    endpoint: string,
+    init: RequestInit = {},
+    options: RequestOptions<T> = {}
+  ): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`
+    const retries =
+      options.retries ?? (init.method === 'GET' || !init.method ? 2 : 0)
+    let lastError: unknown
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const headers = this.buildHeaders(init.headers ?? {}, init.body ?? null)
+        const response = await this.fetchWithTimeout(url, {
+          ...init,
+          headers,
+          credentials: 'include',
+        })
+
+        if (!response.ok) {
+          this.handleAuthErrors(response.status)
+          const error = await this.buildError(response, endpoint)
+
+          if (this.shouldRetry(response.status, attempt, retries + 1)) {
+            await this.delayFromResponse(response, attempt)
+            continue
+          }
+
+          if (response.status >= 500 && typeof window !== 'undefined') {
+            logClientError(error, {
+              tags: {
+                status: String(response.status),
+                endpoint,
+              },
+            })
+          }
+
+          throw error
+        }
+
+        return await this.parseResponse(response, endpoint, options.schema)
+      } catch (error) {
+        if (error instanceof ApiError) {
+          lastError = error
+          if (
+            error.status > 0 &&
+            this.shouldRetry(error.status, attempt, retries + 1)
+          ) {
+            await this.delayWithAttempt(attempt)
+            continue
+          }
+          throw error
+        }
+
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          const timeoutError = new ApiError(
+            'Permintaan ke server melebihi batas waktu',
+            408,
+            undefined,
+            endpoint
+          )
+          lastError = timeoutError
+          throw timeoutError
+        }
+
+        lastError = error
+        throw new ApiError(
+          error instanceof Error ? error.message : 'Network error',
+          0,
+          undefined,
+          endpoint
+        )
+      }
+    }
+
     if (lastError instanceof Error) {
       throw lastError
     }
-    throw new ApiError('Unknown error', 0, lastError)
+
+    throw new ApiError('Unknown error', 0, lastError, endpoint)
+  }
+
+  async get<T>(endpoint: string, schema?: z.ZodSchema<T>): Promise<T> {
+    return this.request(endpoint, { method: 'GET' }, { schema })
   }
 
   async post<T>(
     endpoint: string,
     data?: unknown,
     schema?: z.ZodSchema<T>,
-    options: RequestInit = {}
+    init: RequestInit = {}
   ): Promise<T> {
     return this.request(
       endpoint,
       {
         method: 'POST',
-        body: data ? JSON.stringify(data) : undefined,
-        ...options,
+        body: data !== undefined && !(data instanceof FormData) ? JSON.stringify(data) : (data as BodyInit),
+        ...init,
       },
-      schema
+      { schema }
     )
   }
 
@@ -159,40 +302,64 @@ class ApiClient {
       endpoint,
       {
         method: 'PUT',
-        body: data ? JSON.stringify(data) : undefined,
+        body: data !== undefined ? JSON.stringify(data) : undefined,
       },
-      schema
+      { schema }
     )
   }
 
   async delete<T>(endpoint: string, schema?: z.ZodSchema<T>): Promise<T> {
-    return this.request(endpoint, { method: 'DELETE' }, schema)
+    return this.request(
+      endpoint,
+      { method: 'DELETE' },
+      { schema }
+    )
   }
 
-  // Multipart form data for file uploads
   async postFormData<T>(
     endpoint: string,
     formData: FormData,
     schema?: z.ZodSchema<T>
   ): Promise<T> {
-    const headers: HeadersInit = {}
-    
-    if (this.token) {
-      headers.Authorization = `Bearer ${this.token}`
-    }
-
     return this.request(
       endpoint,
       {
         method: 'POST',
         body: formData,
-        headers,
       },
-      schema
+      { schema }
     )
+  }
+
+  async download(endpoint: string, data: Record<string, unknown>) {
+    const url = `${this.baseURL}${endpoint}`
+    const headers = this.buildHeaders()
+    headers.set('Accept', 'application/octet-stream')
+    headers.delete('Content-Type')
+
+    const response = await this.fetchWithTimeout(url, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers,
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      this.handleAuthErrors(response.status)
+      const error = await this.buildError(response, endpoint)
+      if (response.status >= 500 && typeof window !== 'undefined') {
+        logClientError(error, {
+          tags: {
+            status: String(response.status),
+            endpoint,
+          },
+        })
+      }
+      throw error
+    }
+
+    return response.blob()
   }
 }
 
-// Export singleton instance
 export const apiClient = new ApiClient()
-export { ApiError }

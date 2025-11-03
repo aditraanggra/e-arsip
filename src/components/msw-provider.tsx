@@ -13,7 +13,7 @@ export function MSWProvider({ children }: { children: React.ReactNode }) {
       try {
         if (
           typeof window !== 'undefined' &&
-          (process.env.NEXT_PUBLIC_USE_MOCKS === 'true' || process.env.NODE_ENV === 'development')
+          process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
         ) {
           // Prevent blocking UI for too long if MSW hangs
           timer = window.setTimeout(() => {

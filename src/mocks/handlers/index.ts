@@ -39,8 +39,9 @@ function filterSuratMasuk(data: SuratMasuk[], params: URLSearchParams) {
   if (q) {
     filtered = filtered.filter(item => 
       item.perihal.toLowerCase().includes(q.toLowerCase()) ||
-      item.pengirim.toLowerCase().includes(q.toLowerCase()) ||
-      item.nomor_surat.toLowerCase().includes(q.toLowerCase())
+      (item.pengirim ?? '').toLowerCase().includes(q.toLowerCase()) ||
+      item.nomor_surat.toLowerCase().includes(q.toLowerCase()) ||
+      (item.no_agenda ?? '').toLowerCase().includes(q.toLowerCase())
     )
   }
   
@@ -51,12 +52,32 @@ function filterSuratMasuk(data: SuratMasuk[], params: URLSearchParams) {
   
   const dateFrom = params.get('date_from')
   if (dateFrom) {
-    filtered = filtered.filter(item => item.tanggal >= dateFrom)
+    filtered = filtered.filter(item => {
+      const itemDate = item.tanggal.slice(0, 10)
+      return itemDate >= dateFrom
+    })
   }
   
   const dateTo = params.get('date_to')
   if (dateTo) {
-    filtered = filtered.filter(item => item.tanggal <= dateTo)
+    filtered = filtered.filter(item => {
+      const itemDate = item.tanggal.slice(0, 10)
+      return itemDate <= dateTo
+    })
+  }
+
+  const district = params.get('district')
+  if (district) {
+    filtered = filtered.filter(
+      item => (item.district ?? '').toLowerCase() === district.toLowerCase()
+    )
+  }
+
+  const village = params.get('village')
+  if (village) {
+    filtered = filtered.filter(
+      item => (item.village ?? '').toLowerCase() === village.toLowerCase()
+    )
   }
   
   return filtered
@@ -81,12 +102,18 @@ function filterSuratKeluar(data: SuratKeluar[], params: URLSearchParams) {
   
   const dateFrom = params.get('date_from')
   if (dateFrom) {
-    filtered = filtered.filter(item => item.tanggal >= dateFrom)
+    filtered = filtered.filter(item => {
+      const itemDate = item.tanggal.slice(0, 10)
+      return itemDate >= dateFrom
+    })
   }
   
   const dateTo = params.get('date_to')
   if (dateTo) {
-    filtered = filtered.filter(item => item.tanggal <= dateTo)
+    filtered = filtered.filter(item => {
+      const itemDate = item.tanggal.slice(0, 10)
+      return itemDate <= dateTo
+    })
   }
   
   return filtered
@@ -95,7 +122,7 @@ function filterSuratKeluar(data: SuratKeluar[], params: URLSearchParams) {
 export const handlers = [
   ...relativeAuthHandlers,
   // Auth endpoints - Full URL handlers
-  http.post(`${API_BASE_URL}/auth/login`, async ({ request }) => {
+  http.post(`${API_BASE_URL}/login`, async ({ request }) => {
     await delay(MOCK_LATENCY)
     
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
@@ -122,7 +149,7 @@ export const handlers = [
   }),
 
   // Auth endpoints - Relative path handlers for direct requests
-  http.post('/auth/login', async ({ request }) => {
+  http.post('/login', async ({ request }) => {
     await delay(MOCK_LATENCY)
     
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
@@ -148,21 +175,21 @@ export const handlers = [
     )
   }),
 
-  http.post(`${API_BASE_URL}/auth/logout`, async () => {
+  http.post(`${API_BASE_URL}/logout`, async () => {
     await delay(MOCK_LATENCY)
     return HttpResponse.json({
       message: 'Logout berhasil',
     })
   }),
 
-  http.post('/auth/logout', async () => {
+  http.post('/logout', async () => {
     await delay(MOCK_LATENCY)
     return HttpResponse.json({
       message: 'Logout berhasil',
     })
   }),
 
-  http.get(`${API_BASE_URL}/me`, async ({ request }) => {
+  http.get(`${API_BASE_URL}/user`, async ({ request }) => {
     await delay(MOCK_LATENCY)
     
     const authHeader = request.headers.get('Authorization')
@@ -178,7 +205,7 @@ export const handlers = [
     })
   }),
 
-  http.get('/me', async ({ request }) => {
+  http.get('/user', async ({ request }) => {
     await delay(MOCK_LATENCY)
     
     const authHeader = request.headers.get('Authorization')

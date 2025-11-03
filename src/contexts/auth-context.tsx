@@ -24,41 +24,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!user
 
   useEffect(() => {
+    let isMounted = true
+
     const initAuth = async () => {
-      const token = apiClient.getToken()
-      
-      if (token) {
-        try {
-          const userData = await authService.me()
+      try {
+        const userData = await authService.me()
+        if (isMounted) {
           setUser(userData)
-        } catch {
-          // Token is invalid, clear it
-          apiClient.setToken(null)
+        }
+      } catch {
+        apiClient.setToken(null)
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
         }
       }
-      
-      setIsLoading(false)
     }
 
     initAuth()
+
+    const handleUnauthorized = () => {
+      if (isMounted) {
+        setUser(null)
+        setIsLoading(false)
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('api:unauthorized', handleUnauthorized)
+    }
+
+    return () => {
+      isMounted = false
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('api:unauthorized', handleUnauthorized)
+      }
+    }
   }, [])
 
   const login = async (credentials: LoginData) => {
     const { user: userData, token } = await authService.login(credentials)
-    
-    // Set token and user before navigation
+
     apiClient.setToken(token)
     setUser(userData)
-    
-    // Ensure middleware sees authentication regardless of MSW/server path
+
     if (typeof document !== 'undefined') {
-      document.cookie = `auth-token=${token}; path=/; samesite=lax; max-age=86400`
+      const secureAttr = window.location.protocol === 'https:' ? '; secure' : ''
+      document.cookie = `auth-token=active; path=/; samesite=lax; max-age=86400${secureAttr}`
     }
-    
-    // Use setTimeout to ensure state updates before navigation
-    setTimeout(() => {
-      router.push('/dashboard')
-    }, 100)
+
+    router.replace('/dashboard')
   }
 
   const logout = async () => {
@@ -70,17 +85,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       // Clear token and cookie
       apiClient.setToken(null)
+      setUser(null)
+
       if (typeof document !== 'undefined') {
         document.cookie = 'auth-token=; path=/; max-age=0'
       }
-      
-      // Clear user state
-      setUser(null)
-      
-      // Use setTimeout to ensure state updates before navigation
-      setTimeout(() => {
-        router.push('/login')
-      }, 100)
+
+      router.replace('/login')
     }
   }
 

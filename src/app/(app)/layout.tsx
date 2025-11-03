@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { AppHeader } from '@/components/layout/app-header'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
+import { Badge } from '@/components/ui/badge'
 
 export default function AppLayout({
   children,
@@ -45,6 +46,26 @@ export default function AppLayout({
           <main className="flex w-full flex-1 flex-col px-4 py-4 sm:px-6 sm:py-6 xl:px-8 2xl:px-12 min-w-0">
             {children}
           </main>
+          <footer className="flex w-full flex-col gap-2 border-t border-emerald-100/60 bg-white/70 px-4 py-3 text-xs text-emerald-900 sm:flex-row sm:items-center sm:justify-between sm:px-6 xl:px-8">
+            <div className="flex items-center gap-2">
+              <Badge
+                variant={process.env.NEXT_PUBLIC_USE_MOCKS === 'false' ? 'default' : 'outline'}
+                className={
+                  process.env.NEXT_PUBLIC_USE_MOCKS === 'false'
+                    ? 'bg-emerald-600 hover:bg-emerald-600 text-white'
+                    : 'border-emerald-300 text-emerald-700'
+                }
+              >
+                MODE: {process.env.NEXT_PUBLIC_USE_MOCKS === 'false' ? 'LIVE' : 'MOCK'}
+              </Badge>
+              <span className="text-muted-foreground">
+                API Base: {process.env.NEXT_PUBLIC_API_BASE_URL || 'local'}
+              </span>
+            </div>
+            <span className="text-muted-foreground">
+              © {new Date().getFullYear()} E-Arsip — Baznas Kabupaten Cianjur
+            </span>
+          </footer>
         </SidebarInset>
       </div>
     </SidebarProvider>

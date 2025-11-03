@@ -85,7 +85,7 @@ function filterSuratMasuk(items: SuratMasuk[], params: SuratMasukQuery) {
   if (keyword) {
     const value = normalizeText(keyword)
     filtered = filtered.filter((item) =>
-      [item.nomor_surat, item.perihal, item.pengirim]
+      [item.nomor_surat, item.perihal, item.pengirim, item.no_agenda]
         .filter(Boolean)
         .some((field) => normalizeText(field!).includes(value))
     )
@@ -96,11 +96,27 @@ function filterSuratMasuk(items: SuratMasuk[], params: SuratMasukQuery) {
   }
 
   if (params.date_from) {
-    filtered = filtered.filter((item) => item.tanggal >= params.date_from!)
+    filtered = filtered.filter(
+      (item) => item.tanggal.slice(0, 10) >= params.date_from!
+    )
   }
 
   if (params.date_to) {
-    filtered = filtered.filter((item) => item.tanggal <= params.date_to!)
+    filtered = filtered.filter(
+      (item) => item.tanggal.slice(0, 10) <= params.date_to!
+    )
+  }
+
+  if (params.district) {
+    filtered = filtered.filter(
+      (item) => normalizeText(item.district ?? '') === normalizeText(params.district!)
+    )
+  }
+
+  if (params.village) {
+    filtered = filtered.filter(
+      (item) => normalizeText(item.village ?? '') === normalizeText(params.village!)
+    )
   }
 
   return filtered
@@ -124,11 +140,15 @@ function filterSuratKeluar(items: SuratKeluar[], params: SuratKeluarQuery) {
   }
 
   if (params.date_from) {
-    filtered = filtered.filter((item) => item.tanggal >= params.date_from!)
+    filtered = filtered.filter(
+      (item) => item.tanggal.slice(0, 10) >= params.date_from!
+    )
   }
 
   if (params.date_to) {
-    filtered = filtered.filter((item) => item.tanggal <= params.date_to!)
+    filtered = filtered.filter(
+      (item) => item.tanggal.slice(0, 10) <= params.date_to!
+    )
   }
 
   return filtered
@@ -242,6 +262,8 @@ export const localApi = {
         throw new Error('Kategori tidak ditemukan')
       }
 
+      const generatedAgenda = `AGD-${new Date().getFullYear()}-${String(nextSuratMasukId).padStart(3, '0')}`
+
       const newItem: SuratMasuk = {
         id: nextSuratMasukId++,
         nomor_surat: data.nomor_surat,
@@ -253,6 +275,13 @@ export const localApi = {
         file_path: data.file_path,
         category_id: data.category_id,
         category: { id: category.id, name: category.name },
+        no_agenda: generatedAgenda,
+        district: null,
+        village: null,
+        contact: null,
+        address: null,
+        dept_disposition: null,
+        desc_disposition: data.keterangan ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
@@ -279,6 +308,10 @@ export const localApi = {
         category_id: data.category_id ?? current.category_id,
         category: { id: category.id, name: category.name },
         updated_at: new Date().toISOString(),
+      }
+
+      if (Object.prototype.hasOwnProperty.call(data, 'keterangan')) {
+        updated.desc_disposition = data.keterangan ?? current.desc_disposition ?? null
       }
 
       suratMasukStore[index] = updated
@@ -312,6 +345,8 @@ export const localApi = {
         throw new Error('Kategori tidak ditemukan')
       }
 
+      const fileName = data.file_path?.split('/').pop() ?? null
+
       const newItem: SuratKeluar = {
         id: nextSuratKeluarId++,
         nomor_surat: data.nomor_surat,
@@ -320,6 +355,7 @@ export const localApi = {
         tanggal: data.tanggal,
         keterangan: data.keterangan,
         file_path: data.file_path,
+        file: fileName,
         category_id: data.category_id,
         category: { id: category.id, name: category.name },
         created_at: new Date().toISOString(),
@@ -348,6 +384,10 @@ export const localApi = {
         category_id: data.category_id ?? current.category_id,
         category: { id: category.id, name: category.name },
         updated_at: new Date().toISOString(),
+      }
+
+      if (Object.prototype.hasOwnProperty.call(data, 'file_path')) {
+        updated.file = data.file_path?.split('/').pop() ?? current.file ?? null
       }
 
       suratKeluarStore[index] = updated
@@ -380,4 +420,3 @@ export const localApi = {
     },
   },
 }
-

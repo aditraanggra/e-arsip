@@ -6,7 +6,7 @@ const MOCK_LATENCY = 300
 // These handlers use relative paths to catch direct requests
 export const relativeAuthHandlers = [
   // Auth endpoints - Relative path handlers
-  http.post('/auth/login', async ({ request }) => {
+  http.post('/login', async ({ request }) => {
     await delay(MOCK_LATENCY)
     
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
@@ -32,14 +32,14 @@ export const relativeAuthHandlers = [
     )
   }),
 
-  http.post('/auth/logout', async () => {
+  http.post('/logout', async () => {
     await delay(MOCK_LATENCY)
     return HttpResponse.json({
       message: 'Logout berhasil',
     })
   }),
 
-  http.get('/me', async ({ request }) => {
+  http.get('/user', async ({ request }) => {
     await delay(MOCK_LATENCY)
     
     const authHeader = request.headers.get('Authorization')

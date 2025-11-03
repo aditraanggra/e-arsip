@@ -32,11 +32,13 @@ Setelah login Anda akan diarahkan ke dashboard utama.
 
 | Variabel | Deskripsi |
 | --- | --- |
-| `NEXT_PUBLIC_USE_MOCKS` | Set ke `true` (default) untuk menggunakan MSW. Set ke `false` untuk mengarah ke API nyata. |
+| `NEXT_PUBLIC_USE_MOCKS` | Set ke `true` (default) untuk menggunakan MSW. Set ke `false` untuk mengarah ke API Laravel yang sudah live. |
 | `NEXT_PUBLIC_API_BASE_URL` | Basis URL API eksternal ketika MSW dimatikan. |
 | `NEXT_PUBLIC_DEFAULT_PAGE_SIZE` | Ukuran halaman default untuk daftar surat. |
 
 > Untuk menjalankan mock secara otomatis pada mode development, proyek harus dijalankan di browser (tidak berlaku untuk SSR murni).
+
+Gunakan `.env.production.example` sebagai referensi penyusunan environment produksi. Untuk rollback cepat ke mode mock, ubah `NEXT_PUBLIC_USE_MOCKS=true` dan redeploy frontend.
 
 ## Skrip NPM
 

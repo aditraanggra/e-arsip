@@ -36,24 +36,38 @@ export default function SuratKeluarPage() {
       process.env.NEXT_PUBLIC_DEFAULT_PAGE_SIZE ||
       '10'
   )
-  const search = searchParams.get('search') || ''
+  const search = searchParams.get('q') || ''
   const categoryIdParam = searchParams.get('category_id')
   const categoryIdNumber = categoryIdParam ? Number(categoryIdParam) : undefined
   const categoryFilter = Number.isNaN(categoryIdNumber)
     ? undefined
     : categoryIdNumber
+  const dateFromParam = searchParams.get('date_from') || ''
+  const dateToParam = searchParams.get('date_to') || ''
 
   const [searchInput, setSearchInput] = useState(search)
   const [selectedCategory, setSelectedCategory] = useState(categoryIdParam ?? 'all')
+  const [dateFromInput, setDateFromInput] = useState(dateFromParam)
+  const [dateToInput, setDateToInput] = useState(dateToParam)
 
   const { data: suratKeluarData, isLoading: isLoadingSuratKeluar } = useQuery({
-    queryKey: ['surat-keluar', page, perPage, search, categoryIdParam ?? 'all'],
+    queryKey: [
+      'surat-keluar',
+      page,
+      perPage,
+      search,
+      categoryIdParam ?? 'all',
+      dateFromParam,
+      dateToParam,
+    ],
     queryFn: () =>
       suratKeluarService.getAll({
         page,
         per_page: perPage,
-        search,
+        q: search,
         category_id: categoryFilter,
+        date_from: dateFromParam || undefined,
+        date_to: dateToParam || undefined,
       }),
   })
 
@@ -70,15 +84,22 @@ export default function SuratKeluarPage() {
     setSelectedCategory(categoryIdParam ?? 'all')
   }, [categoryIdParam])
 
+  useEffect(() => {
+    setDateFromInput(dateFromParam)
+    setDateToInput(dateToParam)
+  }, [dateFromParam, dateToParam])
+
   const handleSearch = () => {
     const params = new URLSearchParams()
     params.set('page', '1')
     params.set('per_page', perPage.toString())
 
-    if (searchInput) params.set('search', searchInput)
+    if (searchInput) params.set('q', searchInput)
     if (selectedCategory && selectedCategory !== 'all') {
       params.set('category_id', selectedCategory)
     }
+    if (dateFromInput) params.set('date_from', dateFromInput)
+    if (dateToInput) params.set('date_to', dateToInput)
 
     router.push(`/surat-keluar?${params.toString()}`)
   }
@@ -157,14 +178,29 @@ export default function SuratKeluarPage() {
         <Button onClick={handleSearch}>Filter</Button>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Input
+          type="date"
+          value={dateFromInput}
+          onChange={(event) => setDateFromInput(event.target.value)}
+          placeholder="Tanggal dari"
+        />
+        <Input
+          type="date"
+          value={dateToInput}
+          onChange={(event) => setDateToInput(event.target.value)}
+          placeholder="Tanggal sampai"
+        />
+      </div>
+
       <div className="border rounded-md">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Tanggal</TableHead>
               <TableHead>No. Surat</TableHead>
               <TableHead>Perihal</TableHead>
               <TableHead>Tujuan</TableHead>
-              <TableHead>Tanggal</TableHead>
               <TableHead>Kategori</TableHead>
               <TableHead className="text-right">Aksi</TableHead>
             </TableRow>
@@ -174,13 +210,13 @@ export default function SuratKeluarPage() {
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index}>
                   <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell>
                     <Skeleton className="h-4 w-40" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-24" />
@@ -205,14 +241,18 @@ export default function SuratKeluarPage() {
             ) : (
               suratKeluarData?.data.map((surat) => (
                 <TableRow key={surat.id}>
+                  <TableCell>
+                    {surat.tanggal
+                      ? new Date(surat.tanggal).toLocaleDateString('id-ID')
+                      : '-'}
+                  </TableCell>
                   <TableCell>{surat.nomor_surat}</TableCell>
                   <TableCell>{surat.perihal}</TableCell>
-                  <TableCell>{surat.tujuan}</TableCell>
+                  <TableCell>{surat.tujuan || '-'}</TableCell>
                   <TableCell>
-                    {new Date(surat.tanggal).toLocaleDateString('id-ID')}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{surat.category.name}</Badge>
+                    <Badge variant="outline">
+                      {surat.category?.name || `#${surat.category_id}`}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
