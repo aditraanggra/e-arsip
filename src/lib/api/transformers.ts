@@ -167,18 +167,17 @@ export function parseApiResponse<T extends z.ZodTypeAny>(
   schema: T,
   payload: unknown
 ): z.infer<T> {
-  const unionSchema = z
-    .union([
-      apiResponseSchema(schema),
-      z.object({ data: schema }).strict(),
-      schema,
-    ])
-    .transform((value) => {
-      if ('data' in value) {
-        return value.data
-      }
-      return value
-    })
+  const unionSchema = z.union([
+    apiResponseSchema(schema),
+    z.object({ data: schema }).strict(),
+    schema,
+  ])
 
-  return unionSchema.parse(payload)
+  const parsed = unionSchema.parse(payload)
+
+  if (typeof parsed === 'object' && parsed !== null && 'data' in parsed) {
+    return (parsed as { data: z.infer<T> }).data
+  }
+
+  return parsed as z.infer<T>
 }

@@ -90,7 +90,7 @@ function filterSuratKeluar(data: SuratKeluar[], params: URLSearchParams) {
   if (q) {
     filtered = filtered.filter(item => 
       item.perihal.toLowerCase().includes(q.toLowerCase()) ||
-      item.tujuan.toLowerCase().includes(q.toLowerCase()) ||
+      (item.tujuan ?? '').toLowerCase().includes(q.toLowerCase()) ||
       item.nomor_surat.toLowerCase().includes(q.toLowerCase())
     )
   }
@@ -264,11 +264,27 @@ export const handlers = [
   http.post(`${API_BASE_URL}/surat-masuk`, async ({ request }) => {
     await delay(MOCK_LATENCY)
     
-    const body: SuratMasukCreate = await request.json()
-    const category = mockCategories.find(cat => cat.id === body.category_id) ?? mockCategories[0]
+    const body = (await request.json()) as Partial<SuratMasukCreate> | undefined
+    if (!body) {
+      return HttpResponse.json({ message: 'Payload tidak valid' }, { status: 400 })
+    }
+
+    const { nomor_surat, perihal, pengirim, tanggal, tanggal_diterima, category_id } = body
+    if (!nomor_surat || !perihal || !pengirim || !tanggal || !tanggal_diterima || !category_id) {
+      return HttpResponse.json({ message: 'Payload tidak valid' }, { status: 422 })
+    }
+
+    const category = mockCategories.find(cat => cat.id === category_id) ?? mockCategories[0]
     const newItem = {
       id: Math.max(...allMockSuratMasuk.map(s => s.id)) + 1,
-      ...body,
+      nomor_surat,
+      perihal,
+      pengirim,
+      tanggal,
+      tanggal_diterima,
+      category_id,
+      keterangan: body.keterangan ?? null,
+      file_path: body.file_path ?? null,
       category: { id: category.id, name: category.name },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -286,7 +302,7 @@ export const handlers = [
     await delay(MOCK_LATENCY)
     
     const id = parseInt(params.id as string)
-    const body: Partial<SuratMasukCreate> = await request.json()
+    const body = ((await request.json().catch(() => undefined)) ?? {}) as Partial<SuratMasukCreate>
     const index = allMockSuratMasuk.findIndex(s => s.id === id)
     
     if (index === -1) {
@@ -368,11 +384,26 @@ export const handlers = [
   http.post(`${API_BASE_URL}/surat-keluar`, async ({ request }) => {
     await delay(MOCK_LATENCY)
     
-    const body: SuratKeluarCreate = await request.json()
-    const category = mockCategories.find(cat => cat.id === body.category_id) ?? mockCategories[0]
+    const body = (await request.json()) as Partial<SuratKeluarCreate> | undefined
+    if (!body) {
+      return HttpResponse.json({ message: 'Payload tidak valid' }, { status: 400 })
+    }
+
+    const { nomor_surat, perihal, tujuan, tanggal, category_id } = body
+    if (!nomor_surat || !perihal || !tujuan || !tanggal || !category_id) {
+      return HttpResponse.json({ message: 'Payload tidak valid' }, { status: 422 })
+    }
+
+    const category = mockCategories.find(cat => cat.id === category_id) ?? mockCategories[0]
     const newItem = {
       id: Math.max(...allMockSuratKeluar.map(s => s.id)) + 1,
-      ...body,
+      nomor_surat,
+      perihal,
+      tujuan,
+      tanggal,
+      keterangan: body.keterangan ?? null,
+      file_path: body.file_path ?? null,
+      category_id,
       category: { id: category.id, name: category.name },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -390,7 +421,7 @@ export const handlers = [
     await delay(MOCK_LATENCY)
     
     const id = parseInt(params.id as string)
-    const body: Partial<SuratKeluarCreate> = await request.json()
+    const body = ((await request.json().catch(() => undefined)) ?? {}) as Partial<SuratKeluarCreate>
     const index = allMockSuratKeluar.findIndex(s => s.id === id)
     
     if (index === -1) {

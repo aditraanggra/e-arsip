@@ -72,11 +72,11 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
         nomor_surat: z.string().min(1, 'Nomor surat wajib diisi'),
         perihal: z.string().min(1, 'Perihal wajib diisi'),
         pengirim: z.string().min(1, 'Pengirim wajib diisi'),
-        tanggal: z.date({ required_error: 'Tanggal wajib diisi' }),
-        tanggal_diterima: z.date({ required_error: 'Tanggal diterima wajib diisi' }),
+        tanggal: z.date({ error: 'Tanggal wajib diisi' }),
+        tanggal_diterima: z.date({ error: 'Tanggal diterima wajib diisi' }),
         keterangan: z.string().optional(),
         category_id: z
-          .number({ required_error: 'Kategori wajib dipilih' })
+          .number({ error: 'Kategori wajib dipilih' })
           .min(1, 'Kategori wajib dipilih'),
         file_path: z.string().optional(),
       })
@@ -97,11 +97,11 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
       form.reset({
         nomor_surat: initialData.nomor_surat,
         perihal: initialData.perihal,
-        pengirim: initialData.pengirim,
+        pengirim: initialData.pengirim ?? '',
         tanggal: new Date(initialData.tanggal),
         tanggal_diterima: new Date(initialData.tanggal_diterima),
-        keterangan: initialData.keterangan || '',
-        file_path: initialData.file_path || '',
+        keterangan: initialData.keterangan ?? undefined,
+        file_path: initialData.file_path ?? undefined,
         category_id: initialData.category_id,
       })
     }
@@ -240,12 +240,7 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      initialFocus
-                    />
+                    <Calendar selected={field.value} onSelect={field.onChange} />
                   </PopoverContent>
                 </Popover>
                 <FormMessage />
@@ -276,12 +271,7 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      initialFocus
-                    />
+                    <Calendar selected={field.value} onSelect={field.onChange} />
                   </PopoverContent>
                 </Popover>
                 <FormMessage />

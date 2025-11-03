@@ -26,6 +26,8 @@ type SuratMasukQuery = {
   date_to?: string
   page?: number
   per_page?: number
+  district?: string
+  village?: string
 }
 
 type SuratKeluarQuery = {
@@ -297,16 +299,20 @@ export const localApi = {
       }
 
       const current = suratMasukStore[index]
-      let category = mockCategories.find((cat) => cat.id === (data.category_id ?? current.category_id))
-      if (!category) {
-        category = { id: current.category.id, name: current.category.name }
-      }
+      const fallbackCategory = current.category
+        ? { id: current.category.id, name: current.category.name }
+        : mockCategories.find((cat) => cat.id === current.category_id) ?? mockCategories[0]
+
+      const matchedCategory =
+        (data.category_id !== undefined
+          ? mockCategories.find((cat) => cat.id === data.category_id)
+          : null) ?? fallbackCategory
 
       const updated: SuratMasuk = {
         ...current,
         ...data,
         category_id: data.category_id ?? current.category_id,
-        category: { id: category.id, name: category.name },
+        category: matchedCategory ? { id: matchedCategory.id, name: matchedCategory.name } : current.category,
         updated_at: new Date().toISOString(),
       }
 
@@ -373,16 +379,20 @@ export const localApi = {
       }
 
       const current = suratKeluarStore[index]
-      let category = mockCategories.find((cat) => cat.id === (data.category_id ?? current.category_id))
-      if (!category) {
-        category = { id: current.category.id, name: current.category.name }
-      }
+      const fallbackCategory = current.category
+        ? { id: current.category.id, name: current.category.name }
+        : mockCategories.find((cat) => cat.id === current.category_id) ?? mockCategories[0]
+
+      const matchedCategory =
+        (data.category_id !== undefined
+          ? mockCategories.find((cat) => cat.id === data.category_id)
+          : null) ?? fallbackCategory
 
       const updated: SuratKeluar = {
         ...current,
         ...data,
         category_id: data.category_id ?? current.category_id,
-        category: { id: category.id, name: category.name },
+        category: matchedCategory ? { id: matchedCategory.id, name: matchedCategory.name } : current.category,
         updated_at: new Date().toISOString(),
       }
 

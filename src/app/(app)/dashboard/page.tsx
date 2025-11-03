@@ -211,7 +211,10 @@ export default function DashboardPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }: { name?: string; percent?: number }) => {
+                      const percentValue = typeof percent === 'number' ? percent : 0
+                      return `${name ?? 'Total'}: ${(percentValue * 100).toFixed(0)}%`
+                    }}
                     outerRadius={110}
                     fill="#10b981"
                     dataKey="count"
