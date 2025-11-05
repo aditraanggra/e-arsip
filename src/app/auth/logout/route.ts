@@ -7,7 +7,7 @@ export async function POST() {
   })
 
   // Clear auth cookie
-  const headersList = headers()
+  const headersList = await headers()
   const forwardedProto = headersList.get('x-forwarded-proto')
   res.cookies.set('auth-token', '', {
     path: '/',
