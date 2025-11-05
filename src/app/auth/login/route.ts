@@ -93,6 +93,7 @@ function pickToken(payload: unknown): string | null {
 }
 
 export async function POST(request: Request) {
+  const forwardedProto = request.headers.get('x-forwarded-proto')
   try {
     const credentials = await parseCredentials(request)
     assertCredentials(credentials)
@@ -128,13 +129,23 @@ export async function POST(request: Request) {
           ? (parsed as { message: string }).message
           : 'Login gagal'
 
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           message,
           data: parsed,
         },
         { status }
       )
+
+      response.cookies.set(AUTH_COOKIE_NAME, '', {
+        path: '/',
+        sameSite: 'lax',
+        httpOnly: false,
+        maxAge: 0,
+        secure: forwardedProto === 'https',
+      })
+
+      return response
     }
 
     const response = NextResponse.json(
@@ -144,23 +155,34 @@ export async function POST(request: Request) {
 
     const token = pickToken(parsed)
     if (token) {
-      const forwardedProto = request.headers.get('x-forwarded-proto')
       response.cookies.set(AUTH_COOKIE_NAME, 'active', {
         path: '/',
         httpOnly: false,
         sameSite: 'lax',
         secure: forwardedProto === 'https',
+        maxAge: 60 * 60 * 24,
       })
     }
 
     return response
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Login gagal'
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         message,
       },
       { status: 400 }
     )
+
+    const forwardedProto = request.headers.get('x-forwarded-proto')
+    response.cookies.set(AUTH_COOKIE_NAME, '', {
+      path: '/',
+      sameSite: 'lax',
+      httpOnly: false,
+      maxAge: 0,
+      secure: forwardedProto === 'https',
+    })
+
+    return response
   }
 }

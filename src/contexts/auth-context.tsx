@@ -29,7 +29,9 @@ const setAuthCookieActive = () => {
 
 const clearAuthCookie = () => {
   if (typeof document === 'undefined') return
-  document.cookie = `${AUTH_COOKIE_NAME}=; path=/; max-age=0`
+  const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  const secureAttr = isSecure ? '; secure' : ''
+  document.cookie = `${AUTH_COOKIE_NAME}=; path=/; samesite=lax; max-age=0${secureAttr}`
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
