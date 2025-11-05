@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 
+const shouldUseMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
+
 export function MSWProvider({ children }: { children: React.ReactNode }) {
   const [mswReady, setMswReady] = useState(false)
 
@@ -10,23 +12,41 @@ export function MSWProvider({ children }: { children: React.ReactNode }) {
     let timer: number | undefined
 
     const initMSW = async () => {
-      try {
-        if (
-          typeof window !== 'undefined' &&
-          process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
-        ) {
-          // Prevent blocking UI for too long if MSW hangs
-          timer = window.setTimeout(() => {
-            if (!cancelled) setMswReady(true)
-          }, 800)
+      if (typeof window === 'undefined') {
+        setMswReady(true)
+        return
+      }
 
-          const { worker } = await import('@/mocks/browser')
-          await worker.start({
-            onUnhandledRequest: 'bypass',
-            serviceWorker: { url: '/mockServiceWorker.js' },
-          })
-          console.log('🔶 MSW enabled')
+      if (!shouldUseMocks) {
+        try {
+          const registration = await window.navigator.serviceWorker.getRegistration(
+            '/mockServiceWorker.js'
+          )
+
+          if (registration) {
+            await registration.unregister()
+            console.log('🧹 MSW disabled')
+          }
+        } catch (error) {
+          console.error('Failed to disable MSW:', error)
+        } finally {
+          if (!cancelled) setMswReady(true)
         }
+        return
+      }
+
+      try {
+        // Prevent blocking UI for too long if MSW hangs
+        timer = window.setTimeout(() => {
+          if (!cancelled) setMswReady(true)
+        }, 800)
+
+        const { worker } = await import('@/mocks/browser')
+        await worker.start({
+          onUnhandledRequest: 'bypass',
+          serviceWorker: { url: '/mockServiceWorker.js' },
+        })
+        console.log('🔶 MSW enabled')
       } catch (error) {
         console.error('MSW init failed:', error)
       } finally {

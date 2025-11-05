@@ -54,10 +54,21 @@ const loginPayloadSchema = z
 export const authService = {
   async login(credentials: LoginData): Promise<{ user: User; token: string }> {
     if (useLocalMocks) {
+      console.warn(
+        '[auth] Using local MSW mock for login. Set NEXT_PUBLIC_USE_MOCKS=false to hit the live API.'
+      )
       const response = await localApi.auth.login(credentials)
 
       apiClient.setToken(response.token)
       return response
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.info(
+        `[auth] Forwarding login to ${authEndpoints.login} (base: ${
+          process.env.NEXT_PUBLIC_API_BASE_URL ?? 'relative'
+        })`
+      )
     }
 
     const raw = await apiClient.post(authEndpoints.login, credentials)
