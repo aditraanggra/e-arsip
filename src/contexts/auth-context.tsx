@@ -46,9 +46,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initAuth = async () => {
       const storedToken = loadStoredToken()
-      if (storedToken) {
-        apiClient.setToken(storedToken)
+      if (!storedToken) {
+        apiClient.setToken(null)
+        clearAuthCookie()
+        if (isMounted) {
+          setIsLoading(false)
+          setUser(null)
+        }
+        return
       }
+
+      apiClient.setToken(storedToken)
 
       try {
         const userData = await authService.me()
