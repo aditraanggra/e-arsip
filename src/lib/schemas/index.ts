@@ -6,14 +6,17 @@ export const loginSchema = z.object({
   password: z.string().min(6, 'Password minimal 6 karakter'),
 }).strict()
 
-export const userSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string().email(),
-  role: z.string().optional(),
-  created_at: z.string(),
-  updated_at: z.string(),
-}).strict()
+export const userSchema = z
+  .object({
+    id: z.number(),
+    name: z.string(),
+    email: z.string().email(),
+    role: z.string().optional(),
+    email_verified_at: z.string().nullable().optional(),
+    created_at: z.string(),
+    updated_at: z.string(),
+  })
+  .strict()
 
 // Category schema
 export const categorySchema = z.object({
