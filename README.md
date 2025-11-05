@@ -32,7 +32,7 @@ Setelah login Anda akan diarahkan ke dashboard utama.
 
 | Variabel | Deskripsi |
 | --- | --- |
-| `NEXT_PUBLIC_USE_MOCKS` | Set ke `true` (default) untuk menggunakan MSW. Set ke `false` untuk mengarah ke API Laravel yang sudah live. |
+| `NEXT_PUBLIC_USE_MOCKS` | Set ke `true` bila ingin mengaktifkan MSW (mode mock). Biarkan kosong atau `false` untuk menggunakan API Laravel live. |
 | `NEXT_PUBLIC_API_BASE_URL` | Basis URL API eksternal ketika MSW dimatikan. |
 | `NEXT_PUBLIC_DEFAULT_PAGE_SIZE` | Ukuran halaman default untuk daftar surat. |
 

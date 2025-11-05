@@ -8,6 +8,8 @@ import { AppHeader } from '@/components/layout/app-header'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Badge } from '@/components/ui/badge'
 
+const usingMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
+
 export default function AppLayout({
   children,
 }: {
@@ -49,14 +51,14 @@ export default function AppLayout({
           <footer className="flex w-full flex-col gap-2 border-t border-emerald-100/60 bg-white/70 px-4 py-3 text-xs text-emerald-900 sm:flex-row sm:items-center sm:justify-between sm:px-6 xl:px-8">
             <div className="flex items-center gap-2">
               <Badge
-                variant={process.env.NEXT_PUBLIC_USE_MOCKS === 'false' ? 'default' : 'outline'}
+                variant={usingMocks ? 'outline' : 'default'}
                 className={
-                  process.env.NEXT_PUBLIC_USE_MOCKS === 'false'
-                    ? 'bg-emerald-600 hover:bg-emerald-600 text-white'
-                    : 'border-emerald-300 text-emerald-700'
+                  usingMocks
+                    ? 'border-emerald-300 text-emerald-700'
+                    : 'bg-emerald-600 hover:bg-emerald-600 text-white'
                 }
               >
-                MODE: {process.env.NEXT_PUBLIC_USE_MOCKS === 'false' ? 'LIVE' : 'MOCK'}
+                MODE: {usingMocks ? 'MOCK' : 'LIVE'}
               </Badge>
               <span className="text-muted-foreground">
                 API Base: {process.env.NEXT_PUBLIC_API_BASE_URL || 'local'}

@@ -30,7 +30,7 @@ class ApiClient {
     process.env.NEXT_PUBLIC_APP_VERSION || process.env.NEXT_PUBLIC_APP_NAME || 'e-arsip'
 
   constructor() {
-    const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false'
+    const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
     this.baseURL = useMocks ? '' : (process.env.NEXT_PUBLIC_API_BASE_URL ?? '')
 
     const storedToken = loadStoredToken()

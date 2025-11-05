@@ -29,7 +29,7 @@ import {
   parsePaginatedSuratMasuk,
 } from './transformers'
 
-const useLocalMocks = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false'
+const useLocalMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
 
 const authEndpoints = {
   login: process.env.NEXT_PUBLIC_AUTH_LOGIN_ENDPOINT ?? '/login',
