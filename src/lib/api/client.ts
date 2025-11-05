@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { logClientError } from '@/lib/observability'
+import { loadStoredToken, persistToken } from '@/lib/auth/token-storage'
 
 const REQUEST_TIMEOUT_MS = 15_000
 const GET_RETRY_DELAYS_MS = [300, 800]
@@ -31,10 +32,16 @@ class ApiClient {
   constructor() {
     const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false'
     this.baseURL = useMocks ? '' : (process.env.NEXT_PUBLIC_API_BASE_URL ?? '')
+
+    const storedToken = loadStoredToken()
+    if (storedToken) {
+      this.token = storedToken
+    }
   }
 
   setToken(token: string | null) {
     this.token = token
+    persistToken(token)
   }
 
   getToken(): string | null {

@@ -31,10 +31,24 @@ import {
 
 const useLocalMocks = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false'
 
-const loginPayloadSchema = z.object({
-  user: userSchema,
-  token: z.string(),
-}).strict()
+const authEndpoints = {
+  login: process.env.NEXT_PUBLIC_AUTH_LOGIN_ENDPOINT ?? '/login',
+  logout: process.env.NEXT_PUBLIC_AUTH_LOGOUT_ENDPOINT ?? '/logout',
+  me: process.env.NEXT_PUBLIC_AUTH_ME_ENDPOINT ?? '/user',
+}
+
+const loginPayloadSchema = z
+  .object({
+    user: userSchema,
+    token: z.string().optional(),
+    access_token: z.string().optional(),
+    token_type: z.string().optional(),
+    expires_in: z.number().optional(),
+  })
+  .refine((payload) => !!payload.token || !!payload.access_token, {
+    message: 'Token autentikasi tidak ditemukan pada respons login',
+  })
+  .passthrough()
 
 // Auth services
 export const authService = {
@@ -46,14 +60,22 @@ export const authService = {
       return response
     }
 
-    const raw = await apiClient.post('/login', credentials)
+    const raw = await apiClient.post(authEndpoints.login, credentials)
     const parsed = parseApiResponse(loginPayloadSchema, raw)
 
-    apiClient.setToken(parsed.token)
+    const rawToken = parsed.token ?? parsed.access_token ?? ''
+    const token =
+      rawToken.startsWith('Bearer ') ? rawToken.split(' ').at(-1) ?? '' : rawToken
+
+    if (!token) {
+      throw new Error('Token autentikasi tidak ditemukan pada respons API')
+    }
+
+    apiClient.setToken(token)
 
     return {
       user: parsed.user,
-      token: parsed.token,
+      token,
     }
   },
 
@@ -64,7 +86,7 @@ export const authService = {
       return
     }
 
-    await apiClient.post('/logout')
+    await apiClient.post(authEndpoints.logout)
     apiClient.setToken(null)
   },
 
@@ -73,7 +95,7 @@ export const authService = {
       return localApi.auth.me()
     }
 
-    const raw = await apiClient.get('/user')
+    const raw = await apiClient.get(authEndpoints.me)
     return parseApiResponse(userSchema, raw)
   },
 }

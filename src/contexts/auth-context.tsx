@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api/client'
 import { authService } from '@/lib/api/services'
 import type { User, LoginData } from '@/lib/schemas'
+import { loadStoredToken } from '@/lib/auth/token-storage'
 
 interface AuthContextType {
   user: User | null
@@ -15,6 +16,21 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+const AUTH_COOKIE_NAME = 'auth-token'
+const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24
+
+const setAuthCookieActive = () => {
+  if (typeof document === 'undefined') return
+  const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  const secureAttr = isSecure ? '; secure' : ''
+  document.cookie = `${AUTH_COOKIE_NAME}=active; path=/; samesite=lax; max-age=${AUTH_COOKIE_MAX_AGE_SECONDS}${secureAttr}`
+}
+
+const clearAuthCookie = () => {
+  if (typeof document === 'undefined') return
+  document.cookie = `${AUTH_COOKIE_NAME}=; path=/; max-age=0`
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -27,13 +43,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true
 
     const initAuth = async () => {
+      const storedToken = loadStoredToken()
+      if (storedToken) {
+        apiClient.setToken(storedToken)
+      }
+
       try {
         const userData = await authService.me()
         if (isMounted) {
           setUser(userData)
+          setAuthCookieActive()
         }
       } catch {
         apiClient.setToken(null)
+        clearAuthCookie()
+        if (isMounted) {
+          setUser(null)
+        }
       } finally {
         if (isMounted) {
           setIsLoading(false)
@@ -45,6 +71,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const handleUnauthorized = () => {
       if (isMounted) {
+        apiClient.setToken(null)
+        clearAuthCookie()
         setUser(null)
         setIsLoading(false)
       }
@@ -68,10 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     apiClient.setToken(token)
     setUser(userData)
 
-    if (typeof document !== 'undefined') {
-      const secureAttr = window.location.protocol === 'https:' ? '; secure' : ''
-      document.cookie = `auth-token=active; path=/; samesite=lax; max-age=86400${secureAttr}`
-    }
+    setAuthCookieActive()
 
     router.replace('/dashboard')
   }
@@ -87,9 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       apiClient.setToken(null)
       setUser(null)
 
-      if (typeof document !== 'undefined') {
-        document.cookie = 'auth-token=; path=/; max-age=0'
-      }
+      clearAuthCookie()
 
       router.replace('/login')
     }
