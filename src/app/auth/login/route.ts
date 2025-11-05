@@ -1,74 +1,165 @@
 import { NextResponse } from 'next/server'
-import { mockUser } from '@/mocks/data'
+
+type Credentials = {
+  email: string
+  password: string
+}
+
+const AUTH_COOKIE_NAME = 'auth-token'
+
+const baseApiUrl =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.API_BASE_URL ||
+  ''
+
+const loginEndpoint =
+  process.env.NEXT_PUBLIC_AUTH_LOGIN_ENDPOINT ||
+  process.env.AUTH_LOGIN_ENDPOINT ||
+  '/login'
+
+function hasJsonContent(contentType: string | null) {
+  return !!contentType && contentType.toLowerCase().includes('application/json')
+}
+
+async function parseCredentials(request: Request): Promise<Credentials> {
+  const contentType = request.headers.get('content-type')
+
+  if (hasJsonContent(contentType)) {
+    const body = await request.json().catch(() => null)
+    const email = typeof body?.email === 'string' ? body.email : ''
+    const password = typeof body?.password === 'string' ? body.password : ''
+    return { email, password }
+  }
+
+  try {
+    const formData = await request.formData()
+    const email = formData.get('email')
+    const password = formData.get('password')
+    return {
+      email: typeof email === 'string' ? email : '',
+      password: typeof password === 'string' ? password : '',
+    }
+  } catch {
+    return { email: '', password: '' }
+  }
+}
+
+function assertCredentials({ email, password }: Credentials) {
+  if (!email || !password) {
+    throw new Error('Email dan password wajib diisi')
+  }
+}
+
+function resolveLoginUrl() {
+  const trimmedEndpoint = loginEndpoint.trim()
+
+  if (/^https?:\/\//i.test(trimmedEndpoint)) {
+    return trimmedEndpoint
+  }
+
+  if (!baseApiUrl) {
+    throw new Error('Konfigurasi NEXT_PUBLIC_API_BASE_URL belum diset')
+  }
+
+  const base = baseApiUrl.endsWith('/')
+    ? baseApiUrl.slice(0, -1)
+    : baseApiUrl
+  const path = trimmedEndpoint.startsWith('/')
+    ? trimmedEndpoint
+    : `/${trimmedEndpoint}`
+
+  return `${base}${path}`
+}
+
+function pickToken(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') return null
+
+  const data =
+    'data' in payload && typeof (payload as Record<string, unknown>).data === 'object'
+      ? (payload as { data: Record<string, unknown> }).data
+      : (payload as Record<string, unknown>)
+
+  const candidate =
+    (data?.token as string | undefined) ??
+    (data?.access_token as string | undefined) ??
+    (payload as Record<string, unknown>).token ??
+    (payload as Record<string, unknown>).access_token
+
+  if (typeof candidate !== 'string' || candidate.length === 0) {
+    return null
+  }
+
+  return candidate
+}
 
 export async function POST(request: Request) {
   try {
-    let email, password;
-    
-    // Check content type to determine how to parse the request
-    const contentType = request.headers.get('content-type') || '';
-    
-    if (contentType.includes('application/json')) {
-      // Handle JSON data
-      const body = await request.json();
-      email = body?.email;
-      password = body?.password;
-    } else {
-      // Handle form data (both multipart/form-data and application/x-www-form-urlencoded)
+    const credentials = await parseCredentials(request)
+    assertCredentials(credentials)
+
+    const loginUrl = resolveLoginUrl()
+    const backendResponse = await fetch(loginUrl, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(credentials),
+    })
+
+    const rawText = await backendResponse.text()
+    let parsed: unknown = null
+
+    if (rawText) {
       try {
-        const formData = await request.formData();
-        email = formData.get('email')?.toString();
-        password = formData.get('password')?.toString();
-      } catch (formError) {
-        console.error('Error parsing form data:', formError);
+        parsed = JSON.parse(rawText)
+      } catch {
+        parsed = rawText
       }
     }
-    
-    // Validate required fields
-    if (!email || !password) {
+
+    if (!backendResponse.ok) {
+      const status = backendResponse.status || 500
+      const message =
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        'message' in parsed &&
+        typeof (parsed as { message?: unknown }).message === 'string'
+          ? (parsed as { message: string }).message
+          : 'Login gagal'
+
       return NextResponse.json(
-        { 
-          message: 'Invalid input', 
-          errors: [
-            { expected: "string", code: "invalid_type", path: ["data", "email"], message: "Invalid input: expected string, received undefined" },
-            { expected: "string", code: "invalid_type", path: ["data", "password"], message: "Invalid input: expected string, received undefined" }
-          ]
+        {
+          message,
+          data: parsed,
         },
-        { status: 400 }
+        { status }
       )
     }
 
-    const isValid =
-      (email === 'admin@earsip.com' && password === 'password') ||
-      (email === 'admin@example.com' && password === 'password123')
+    const response = NextResponse.json(
+      parsed ?? { message: 'Login berhasil' },
+      { status: backendResponse.status }
+    )
 
-    if (!isValid) {
-      return NextResponse.json(
-        { message: 'Email atau password salah' },
-        { status: 401 }
-      )
+    const token = pickToken(parsed)
+    if (token) {
+      const forwardedProto = request.headers.get('x-forwarded-proto')
+      response.cookies.set(AUTH_COOKIE_NAME, 'active', {
+        path: '/',
+        httpOnly: false,
+        sameSite: 'lax',
+        secure: forwardedProto === 'https',
+      })
     }
 
-    const res = NextResponse.json({
-      data: {
-        user: mockUser,
-        token: 'mock-jwt-token-12345',
-      },
-      message: 'Login berhasil',
-    })
-
-    // Set cookie for middleware to detect authentication
-    res.cookies.set('auth-token', 'mock-jwt-token-12345', {
-      path: '/',
-      httpOnly: false,
-      sameSite: 'lax',
-    })
-
-    return res
-  } catch (e) {
-    console.error('Login error:', e);
+    return response
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Login gagal'
     return NextResponse.json(
-      { message: 'Bad request' },
+      {
+        message,
+      },
       { status: 400 }
     )
   }
