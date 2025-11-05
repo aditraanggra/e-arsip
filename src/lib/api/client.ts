@@ -31,7 +31,15 @@ class ApiClient {
 
   constructor() {
     const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
-    this.baseURL = useMocks ? '' : (process.env.NEXT_PUBLIC_API_BASE_URL ?? '')
+    const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? ''
+
+    if (!useMocks && !configuredBaseUrl && process.env.NODE_ENV !== 'production') {
+      console.warn(
+        '[api] NEXT_PUBLIC_API_BASE_URL tidak terdefinisi. Permintaan akan diarahkan ke origin yang sama.'
+      )
+    }
+
+    this.baseURL = useMocks ? '' : configuredBaseUrl
 
     const storedToken = loadStoredToken()
     if (storedToken) {
