@@ -9,6 +9,10 @@ import {
 import type { SuratMasuk, SuratKeluar, SuratMasukCreate, SuratKeluarCreate } from '@/lib/schemas'
 import { relativeAuthHandlers } from './auth-relative'
 
+type DocumentSearchResult =
+  | (SuratMasuk & { document_type: 'incoming' })
+  | (SuratKeluar & { document_type: 'outgoing' })
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.domain.tld/api/v1'
 const MOCK_LATENCY = 300
 
@@ -521,16 +525,16 @@ export const handlers = [
     const page = parseInt(url.searchParams.get('page') || '1')
     const perPage = parseInt(url.searchParams.get('per_page') || '10')
     
-    let results = []
+    let results: DocumentSearchResult[] = []
     
   if (type === 'incoming' || type === 'all') {
       const filteredIncoming = allMockSuratMasuk.filter(doc => 
         doc.perihal.toLowerCase().includes(query.toLowerCase()) ||
-        doc.pengirim.toLowerCase().includes(query.toLowerCase()) ||
+        (doc.pengirim ?? '').toLowerCase().includes(query.toLowerCase()) ||
         doc.nomor_surat.toLowerCase().includes(query.toLowerCase())
       ).map(doc => ({
         ...doc,
-        document_type: 'incoming'
+        document_type: 'incoming' as const,
       }))
       results = [...results, ...filteredIncoming]
   }
@@ -538,11 +542,11 @@ export const handlers = [
   if (type === 'outgoing' || type === 'all') {
       const filteredOutgoing = allMockSuratKeluar.filter(doc => 
         doc.perihal.toLowerCase().includes(query.toLowerCase()) ||
-        doc.tujuan.toLowerCase().includes(query.toLowerCase()) ||
+        (doc.tujuan ?? '').toLowerCase().includes(query.toLowerCase()) ||
         doc.nomor_surat.toLowerCase().includes(query.toLowerCase())
       ).map(doc => ({
         ...doc,
-        document_type: 'outgoing'
+        document_type: 'outgoing' as const,
       }))
       results = [...results, ...filteredOutgoing]
     }
