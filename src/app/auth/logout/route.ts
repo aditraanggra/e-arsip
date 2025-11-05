@@ -14,6 +14,7 @@ export async function POST() {
     httpOnly: false,
     sameSite: 'lax',
     maxAge: 0,
+    expires: new Date(0),
     secure: forwardedProto === 'https',
   })
 

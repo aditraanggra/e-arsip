@@ -24,14 +24,15 @@ const setAuthCookieActive = () => {
   if (typeof document === 'undefined') return
   const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:'
   const secureAttr = isSecure ? '; secure' : ''
-  document.cookie = `${AUTH_COOKIE_NAME}=active; path=/; samesite=lax; max-age=${AUTH_COOKIE_MAX_AGE_SECONDS}${secureAttr}`
+  const expires = new Date(Date.now() + AUTH_COOKIE_MAX_AGE_SECONDS * 1000).toUTCString()
+  document.cookie = `${AUTH_COOKIE_NAME}=active; path=/; samesite=lax; max-age=${AUTH_COOKIE_MAX_AGE_SECONDS}; expires=${expires}${secureAttr}`
 }
 
 const clearAuthCookie = () => {
   if (typeof document === 'undefined') return
   const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:'
   const secureAttr = isSecure ? '; secure' : ''
-  document.cookie = `${AUTH_COOKIE_NAME}=; path=/; samesite=lax; max-age=0${secureAttr}`
+  document.cookie = `${AUTH_COOKIE_NAME}=; path=/; samesite=lax; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT${secureAttr}`
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -62,7 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userData = await authService.me()
         if (isMounted) {
           setUser(userData)
-          setAuthCookieActive()
         }
       } catch {
         apiClient.setToken(null)

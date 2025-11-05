@@ -6,6 +6,7 @@ type Credentials = {
 }
 
 const AUTH_COOKIE_NAME = 'auth-token'
+const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24
 
 const baseApiUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -142,6 +143,7 @@ export async function POST(request: Request) {
         sameSite: 'lax',
         httpOnly: false,
         maxAge: 0,
+        expires: new Date(0),
         secure: forwardedProto === 'https',
       })
 
@@ -160,7 +162,8 @@ export async function POST(request: Request) {
         httpOnly: false,
         sameSite: 'lax',
         secure: forwardedProto === 'https',
-        maxAge: 60 * 60 * 24,
+        maxAge: AUTH_COOKIE_MAX_AGE_SECONDS,
+        expires: new Date(Date.now() + AUTH_COOKIE_MAX_AGE_SECONDS * 1000),
       })
     }
 
@@ -180,6 +183,7 @@ export async function POST(request: Request) {
       sameSite: 'lax',
       httpOnly: false,
       maxAge: 0,
+      expires: new Date(0),
       secure: forwardedProto === 'https',
     })
 
