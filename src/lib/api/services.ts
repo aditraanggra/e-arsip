@@ -30,7 +30,7 @@ import {
 } from './transformers'
 
 const useLocalMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
-const apiPrefix = '/api'
+const apiPrefix = '/api/v1'
 
 const authEndpoints = {
   login:
@@ -70,8 +70,7 @@ export const authService = {
 
     if (process.env.NODE_ENV !== 'production') {
       console.info(
-        `[auth] Forwarding login to ${authEndpoints.login} (base: ${
-          process.env.NEXT_PUBLIC_API_BASE_URL ?? 'relative'
+        `[auth] Forwarding login to ${authEndpoints.login} (base: ${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'relative'
         })`
       )
     }
@@ -265,7 +264,7 @@ export const suratKeluarService = {
 
     const queryString = searchParams.toString()
     const endpoint = `${apiPrefix}/surat-keluar${queryString ? `?${queryString}` : ''}`
-    
+
     const raw = await apiClient.get(endpoint)
     return parsePaginatedSuratKeluar(raw)
   },
@@ -329,16 +328,16 @@ export const dashboardService = {
     }
 
     const searchParams = new URLSearchParams()
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
         searchParams.append(key, value.toString())
       }
     })
-    
+
     const queryString = searchParams.toString()
     const endpoint = `${apiPrefix}/dashboard/metrics${queryString ? `?${queryString}` : ''}`
-    
+
     const raw = await apiClient.get(endpoint)
     return parseDashboardMetrics(raw)
   },
@@ -362,16 +361,16 @@ export const reportsService = {
     }
 
     const searchParams = new URLSearchParams()
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
         searchParams.append(key, value.toString())
       }
     })
-    
+
     const queryString = searchParams.toString()
     const endpoint = `${apiPrefix}/reports/summary${queryString ? `?${queryString}` : ''}`
-    
+
     const raw = await apiClient.get(endpoint)
     return parseApiResponse(reportsSummarySchema, raw)
   },
