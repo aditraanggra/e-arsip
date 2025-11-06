@@ -236,15 +236,29 @@ const normalizeChartPoint = (
 ) => {
   const record = rawPoint as AnyRecord
   const date = normalizeDateLabel(
-    pickString(record, ['date', 'label', 'day', 'period']),
+    pickString(record, ['date', 'label', 'day', 'period', 'tanggal', 'tgl', 'date_label']),
     `Poin ${index + 1}`
   )
 
   const suratMasuk =
-    pickNumber(record, ['surat_masuk', 'incoming', 'incoming_total']) ?? 0
+    pickNumber(record, [
+      'surat_masuk',
+      'incoming',
+      'incoming_total',
+      'masuk',
+      'jumlah_masuk',
+      'total_masuk',
+    ]) ?? 0
 
   const suratKeluar =
-    pickNumber(record, ['surat_keluar', 'outgoing', 'outgoing_total']) ?? 0
+    pickNumber(record, [
+      'surat_keluar',
+      'outgoing',
+      'outgoing_total',
+      'keluar',
+      'jumlah_keluar',
+      'total_keluar',
+    ]) ?? 0
 
   return {
     date,
@@ -288,11 +302,28 @@ const normalizeDashboardMetrics = (
       'surat_keluar_bulan',
     ]) ?? 0
 
-  const chartSource = Array.isArray(raw.chart_data)
-    ? raw.chart_data
-    : Array.isArray(raw.charts)
-      ? raw.charts
-      : []
+  const chartCandidates: unknown[][] = []
+
+  if (Array.isArray(raw.chart_data)) chartCandidates.push(raw.chart_data)
+  if (Array.isArray(raw.charts)) chartCandidates.push(raw.charts)
+
+  const chart = (raw as AnyRecord).chart
+  if (Array.isArray(chart)) chartCandidates.push(chart)
+
+  const overview = (raw as AnyRecord).overview
+  if (overview && Array.isArray((overview as AnyRecord).chart)) {
+    chartCandidates.push((overview as AnyRecord).chart as unknown[])
+  }
+
+  const overviewData = (raw as AnyRecord).overview_data
+  if (overviewData && Array.isArray((overviewData as AnyRecord).chart)) {
+    chartCandidates.push((overviewData as AnyRecord).chart as unknown[])
+  }
+
+  const chartSource =
+    chartCandidates.find((candidate) => candidate.length > 0) ??
+    chartCandidates[0] ??
+    ([] as unknown[])
 
   const chart_data = chartSource.map((point, index) =>
     normalizeChartPoint(dashboardChartPointApiSchema.parse(point), index)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -133,6 +133,32 @@ export default function SuratMasukPage() {
     }
   }
 
+  const sortedSuratMasuk = useMemo(() => {
+    if (!suratMasukData?.data) return []
+
+    const parseAgendaNumber = (value: string | null | undefined) => {
+      if (!value) return Number.NEGATIVE_INFINITY
+      const digits = value.replace(/\D+/g, '')
+      if (!digits) return Number.NEGATIVE_INFINITY
+      return Number.parseInt(digits, 10)
+    }
+
+    return [...suratMasukData.data].sort((a, b) => {
+      const agendaDiff = parseAgendaNumber(b.no_agenda ?? '') - parseAgendaNumber(a.no_agenda ?? '')
+      if (agendaDiff !== 0 && Number.isFinite(agendaDiff)) {
+        return agendaDiff
+      }
+
+      // Fallback to created_at or id when agenda number missing or equal
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+      if (dateA !== dateB) {
+        return dateB - dateA
+      }
+      return (b.id ?? 0) - (a.id ?? 0)
+    })
+  }, [suratMasukData])
+
   return (
     <div className="w-full min-w-0 space-y-6">
       <div className="flex items-center justify-between">
@@ -248,7 +274,7 @@ export default function SuratMasukPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              suratMasukData?.data.map((surat) => (
+              sortedSuratMasuk.map((surat) => (
                 <TableRow key={surat.id}>
                   <TableCell>{surat.no_agenda || '-'}</TableCell>
                   <TableCell>{surat.nomor_surat}</TableCell>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -126,6 +126,21 @@ export default function SuratKeluarPage() {
     }
   }
 
+  const sortedSuratKeluar = useMemo(() => {
+    if (!suratKeluarData?.data) return []
+
+    return [...suratKeluarData.data].sort((a, b) => {
+      const dateA = a.tanggal ? new Date(a.tanggal).getTime() : 0
+      const dateB = b.tanggal ? new Date(b.tanggal).getTime() : 0
+
+      if (dateA !== dateB) {
+        return dateB - dateA
+      }
+
+      return (b.id ?? 0) - (a.id ?? 0)
+    })
+  }, [suratKeluarData])
+
   return (
     <div className="w-full min-w-0 space-y-6">
       <div className="flex items-center justify-between">
@@ -239,7 +254,7 @@ export default function SuratKeluarPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              suratKeluarData?.data.map((surat) => (
+              sortedSuratKeluar.map((surat) => (
                 <TableRow key={surat.id}>
                   <TableCell>
                     {surat.tanggal
