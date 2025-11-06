@@ -25,6 +25,7 @@ export class ApiError extends Error {
 
 class ApiClient {
   private readonly baseURL: string
+  private readonly credentialsMode: RequestCredentials
   private token: string | null = null
   private readonly clientVersion =
     process.env.NEXT_PUBLIC_APP_VERSION || process.env.NEXT_PUBLIC_APP_NAME || 'e-arsip'
@@ -40,6 +41,9 @@ class ApiClient {
     }
 
     this.baseURL = useMocks ? '' : configuredBaseUrl
+    const shouldOmitCredentials =
+      !useMocks && configuredBaseUrl.startsWith('http')
+    this.credentialsMode = shouldOmitCredentials ? 'omit' : 'same-origin'
 
     const storedToken = loadStoredToken()
     if (storedToken) {
@@ -221,7 +225,7 @@ class ApiClient {
         const response = await this.fetchWithTimeout(url, {
           ...init,
           headers,
-          credentials: 'include',
+          credentials: this.credentialsMode,
         })
 
         if (!response.ok) {
