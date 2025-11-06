@@ -201,6 +201,32 @@ const extractPaginatedData = (payload: unknown) => {
   }
 
   const root = payload as AnyRecord
+
+  const isLaravelPagination =
+    Array.isArray(root.data) &&
+    (root.current_page !== undefined ||
+      root.per_page !== undefined ||
+      root.total !== undefined ||
+      root.last_page !== undefined ||
+      root.from !== undefined ||
+      root.to !== undefined)
+
+  if (isLaravelPagination) {
+    const metaCandidate = {
+      current_page: root.current_page,
+      per_page: root.per_page,
+      total: root.total,
+      last_page: root.last_page,
+      from: root.from,
+      to: root.to,
+    }
+
+    return {
+      data: root.data as unknown[],
+      meta: metaCandidate,
+    }
+  }
+
   const candidates: Array<{ data: unknown[]; meta?: unknown }> = []
 
   if (Array.isArray(root.data)) {
