@@ -288,8 +288,8 @@ export default function SuratKeluarPage() {
       {suratKeluarData?.meta && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Menampilkan {suratKeluarData.meta.from ?? 0} -{' '}
-            {suratKeluarData.meta.to ?? 0} dari {suratKeluarData.meta.total} data
+            Menampilkan {(suratKeluarData.meta?.from ?? 0)} -{' '}
+            {(suratKeluarData.meta?.to ?? 0)} dari {(suratKeluarData.meta?.total ?? 0)} data
           </p>
           <div className="flex gap-1">
             <Button
@@ -304,7 +304,7 @@ export default function SuratKeluarPage() {
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(page + 1)}
-              disabled={page >= suratKeluarData.meta.last_page}
+              disabled={page >= (suratKeluarData.meta?.last_page ?? page)}
             >
               Selanjutnya
             </Button>

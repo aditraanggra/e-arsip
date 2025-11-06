@@ -305,7 +305,7 @@ export default function SuratMasukPage() {
       {suratMasukData?.meta && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Menampilkan {suratMasukData.meta.from} - {suratMasukData.meta.to} dari {suratMasukData.meta.total} data
+            Menampilkan {(suratMasukData.meta?.from ?? 0)} - {(suratMasukData.meta?.to ?? 0)} dari {(suratMasukData.meta?.total ?? 0)} data
           </p>
           <div className="flex gap-1">
             <Button
@@ -320,7 +320,7 @@ export default function SuratMasukPage() {
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(page + 1)}
-              disabled={page >= suratMasukData.meta.last_page}
+              disabled={page >= (suratMasukData.meta?.last_page ?? page)}
             >
               Selanjutnya
             </Button>
