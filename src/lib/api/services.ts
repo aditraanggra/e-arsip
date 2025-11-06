@@ -30,7 +30,7 @@ import {
 } from './transformers'
 
 const useLocalMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
-const apiPrefix = useLocalMocks ? '' : '/api'
+const apiPrefix = '/api'
 
 const authEndpoints = {
   login:
