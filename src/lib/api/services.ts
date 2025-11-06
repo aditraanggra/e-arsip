@@ -35,10 +35,10 @@ const apiPrefix = '/api/v1'
 const authEndpoints = {
   login:
     process.env.NEXT_PUBLIC_AUTH_LOGIN_ENDPOINT ??
-    `${apiPrefix}/auth/login`,
+    `${apiPrefix}/login`,
   logout:
     process.env.NEXT_PUBLIC_AUTH_LOGOUT_ENDPOINT ??
-    `${apiPrefix}/auth/logout`,
+    `${apiPrefix}/logout`,
   me: process.env.NEXT_PUBLIC_AUTH_ME_ENDPOINT ?? `${apiPrefix}/user`,
 }
 
