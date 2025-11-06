@@ -19,60 +19,48 @@ export const userSchema = z
   .strict()
 
 // Category schema
-export const categorySchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  desc: z.string().optional(),
-}).strict()
-
-const categorySummarySchema = z.object({
-  id: z.number(),
-  name: z.string(),
-}).strict()
-
-// Raw API schemas (Laravel)
-export const suratMasukApiSchema = z
+export const categorySchema = z
   .object({
     id: z.number(),
-    no_agenda: z.string().optional(),
-    date_agenda: z.string(),
-    date_letter: z.string(),
-    sender: z.string().nullable(),
-    contact: z.string().nullable().optional(),
-    address: z.string().nullable().optional(),
-    dept_disposition: z.string().nullable().optional(),
-    desc_disposition: z.string().nullable().optional(),
-    district: z.string().nullable().optional(),
-    village: z.string().nullable().optional(),
-    category_id: z.number(),
-    category: categorySummarySchema.nullable().optional(),
-    no_letter: z.string(),
-    subject: z.string(),
-    file: z.string().nullable().optional(),
-    file_path: z.string().nullable().optional(),
-    file_url: z.string().nullable().optional(),
-    created_at: z.string(),
-    updated_at: z.string(),
+    name: z.string(),
+    desc: z.string().optional(),
+    description: z.string().optional(),
+  })
+  .passthrough()
+
+const categorySummarySchema = z
+  .object({
+    id: z.number(),
+    name: z.string(),
   })
   .strict()
+
+const categorySummaryApiSchema = z
+  .object({
+    id: z.coerce.number().optional(),
+    name: z.string().optional(),
+    nama: z.string().optional(),
+  })
+  .passthrough()
+
+// Raw API schemas (Laravel & production)
+export const suratMasukApiSchema = z
+  .object({
+    id: z.coerce.number(),
+    category_id: z.coerce.number().optional(),
+    category: categorySummaryApiSchema.nullable().optional(),
+    kategori: categorySummaryApiSchema.nullable().optional(),
+  })
+  .passthrough()
 
 export const suratKeluarApiSchema = z
   .object({
-    id: z.number(),
-    date_letter: z.string(),
-    to_letter: z.string().nullable(),
-    no_letter: z.string(),
-    subject: z.string(),
-    body: z.string().nullable().optional(),
-    category_id: z.number(),
-    category: categorySummarySchema.nullable().optional(),
-    file: z.string().nullable().optional(),
-    file_path: z.string().nullable().optional(),
-    file_url: z.string().nullable().optional(),
-    created_at: z.string(),
-    updated_at: z.string(),
+    id: z.coerce.number(),
+    category_id: z.coerce.number().optional(),
+    category: categorySummaryApiSchema.nullable().optional(),
+    kategori: categorySummaryApiSchema.nullable().optional(),
   })
-  .strict()
+  .passthrough()
 
 // Surat Masuk schema
 export const suratMasukSchema = z.object({
@@ -135,39 +123,83 @@ export const suratKeluarCreateSchema = z.object({
 }).strict()
 
 // API Response schemas
-export const paginationMetaSchema = z.object({
-  current_page: z.number(),
-  per_page: z.number(),
-  total: z.number(),
-  last_page: z.number(),
-  from: z.number().nullable(),
-  to: z.number().nullable(),
-}).strict()
+export const paginationMetaSchema = z
+  .object({
+    current_page: z.coerce.number().optional(),
+    per_page: z.coerce.number().optional(),
+    total: z.coerce.number().optional(),
+    last_page: z.coerce.number().optional(),
+    from: z.coerce.number().nullable().optional(),
+    to: z.coerce.number().nullable().optional(),
+  })
+  .passthrough()
 
 export const paginatedResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
-  z.object({
-    data: z.array(dataSchema),
-    meta: paginationMetaSchema,
-  }).strict()
+  z
+    .object({
+      data: z.array(dataSchema).optional(),
+      meta: paginationMetaSchema.optional(),
+    })
+    .passthrough()
 
 export const apiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
-  z.object({
-    data: dataSchema,
-    message: z.string().optional(),
-  }).strict()
+  z
+    .object({
+      data: dataSchema,
+      message: z.string().optional(),
+    })
+    .passthrough()
 
 // Dashboard metrics schema
-export const dashboardMetricsSchema = z.object({
-  total_surat_masuk: z.number(),
-  total_surat_keluar: z.number(),
-  surat_masuk_bulan_ini: z.number(),
-  surat_keluar_bulan_ini: z.number(),
-  chart_data: z.array(z.object({
-    date: z.string(),
-    surat_masuk: z.number(),
-    surat_keluar: z.number(),
-  })),
-}).strict()
+export const dashboardMetricsSchema = z
+  .object({
+    total_surat_masuk: z.number(),
+    total_surat_keluar: z.number(),
+    surat_masuk_bulan_ini: z.number(),
+    surat_keluar_bulan_ini: z.number(),
+    chart_data: z.array(
+      z.object({
+        date: z.string(),
+        surat_masuk: z.number(),
+        surat_keluar: z.number(),
+      })
+    ),
+  })
+  .strict()
+
+export const dashboardChartPointApiSchema = z
+  .object({
+    date: z.string().optional(),
+    label: z.string().optional(),
+    day: z.string().optional(),
+    period: z.string().optional(),
+    surat_masuk: z.coerce.number().optional(),
+    surat_keluar: z.coerce.number().optional(),
+    incoming: z.coerce.number().optional(),
+    outgoing: z.coerce.number().optional(),
+    incoming_total: z.coerce.number().optional(),
+    outgoing_total: z.coerce.number().optional(),
+  })
+  .passthrough()
+
+export const dashboardMetricsApiSchema = z
+  .object({
+    total_surat_masuk: z.coerce.number().optional(),
+    total_surat_keluar: z.coerce.number().optional(),
+    surat_masuk_bulan_ini: z.coerce.number().optional(),
+    surat_keluar_bulan_ini: z.coerce.number().optional(),
+    total_incoming: z.coerce.number().optional(),
+    total_outgoing: z.coerce.number().optional(),
+    incoming_letters: z.coerce.number().optional(),
+    outgoing_letters: z.coerce.number().optional(),
+    incoming_this_month: z.coerce.number().optional(),
+    outgoing_this_month: z.coerce.number().optional(),
+    surat_masuk_bulan: z.coerce.number().optional(),
+    surat_keluar_bulan: z.coerce.number().optional(),
+    chart_data: z.array(dashboardChartPointApiSchema).optional(),
+    charts: z.array(dashboardChartPointApiSchema).optional(),
+  })
+  .passthrough()
 
 // Reports schema
 export const reportChartPointSchema = z.object({
@@ -199,5 +231,7 @@ export type ApiResponse<T> = {
   message?: string
 }
 export type DashboardMetrics = z.infer<typeof dashboardMetricsSchema>
+export type DashboardChartPointApi = z.infer<typeof dashboardChartPointApiSchema>
+export type DashboardMetricsApi = z.infer<typeof dashboardMetricsApiSchema>
 export type ReportChartPoint = z.infer<typeof reportChartPointSchema>
 export type ReportsSummary = z.infer<typeof reportsSummarySchema>

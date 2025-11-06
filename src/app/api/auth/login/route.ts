@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { ensureUpstreamBase } from '@/app/api/_utils/proxy'
 
 type Credentials = {
   email: string
@@ -8,15 +9,8 @@ type Credentials = {
 const AUTH_COOKIE_NAME = 'auth-token'
 const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24
 
-const baseApiUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.API_BASE_URL ||
-  ''
-
-const loginEndpoint =
-  process.env.NEXT_PUBLIC_AUTH_LOGIN_ENDPOINT ||
-  process.env.AUTH_LOGIN_ENDPOINT ||
-  '/login'
+const baseApiUrl = ensureUpstreamBase()
+const loginEndpoint = (process.env.AUTH_LOGIN_ENDPOINT ?? '/login').trim()
 
 function hasJsonContent(contentType: string | null) {
   return !!contentType && contentType.toLowerCase().includes('application/json')
@@ -52,24 +46,8 @@ function assertCredentials({ email, password }: Credentials) {
 }
 
 function resolveLoginUrl() {
-  const trimmedEndpoint = loginEndpoint.trim()
-
-  if (/^https?:\/\//i.test(trimmedEndpoint)) {
-    return trimmedEndpoint
-  }
-
-  if (!baseApiUrl) {
-    throw new Error('Konfigurasi NEXT_PUBLIC_API_BASE_URL belum diset')
-  }
-
-  const base = baseApiUrl.endsWith('/')
-    ? baseApiUrl.slice(0, -1)
-    : baseApiUrl
-  const path = trimmedEndpoint.startsWith('/')
-    ? trimmedEndpoint
-    : `/${trimmedEndpoint}`
-
-  return `${base}${path}`
+  const path = loginEndpoint.startsWith('/') ? loginEndpoint : `/${loginEndpoint}`
+  return `${baseApiUrl}${path}`
 }
 
 function pickToken(payload: unknown): string | null {
@@ -95,6 +73,7 @@ function pickToken(payload: unknown): string | null {
 
 export async function POST(request: Request) {
   const forwardedProto = request.headers.get('x-forwarded-proto')
+
   try {
     const credentials = await parseCredentials(request)
     assertCredentials(credentials)
@@ -177,7 +156,6 @@ export async function POST(request: Request) {
       { status: 400 }
     )
 
-    const forwardedProto = request.headers.get('x-forwarded-proto')
     response.cookies.set(AUTH_COOKIE_NAME, '', {
       path: '/',
       sameSite: 'lax',

@@ -3,7 +3,6 @@ import { apiClient } from './client'
 import {
   userSchema,
   categorySchema,
-  dashboardMetricsSchema,
   suratMasukApiSchema,
   suratKeluarApiSchema,
   type LoginData,
@@ -25,16 +24,22 @@ import {
   mapSuratKeluarFromApi,
   mapSuratKeluarPayload,
   parseApiResponse,
+  parseDashboardMetrics,
   parsePaginatedSuratKeluar,
   parsePaginatedSuratMasuk,
 } from './transformers'
 
 const useLocalMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
+const apiPrefix = useLocalMocks ? '' : '/api'
 
 const authEndpoints = {
-  login: process.env.NEXT_PUBLIC_AUTH_LOGIN_ENDPOINT ?? '/login',
-  logout: process.env.NEXT_PUBLIC_AUTH_LOGOUT_ENDPOINT ?? '/logout',
-  me: process.env.NEXT_PUBLIC_AUTH_ME_ENDPOINT ?? '/user',
+  login:
+    process.env.NEXT_PUBLIC_AUTH_LOGIN_ENDPOINT ??
+    `${apiPrefix}/auth/login`,
+  logout:
+    process.env.NEXT_PUBLIC_AUTH_LOGOUT_ENDPOINT ??
+    `${apiPrefix}/auth/logout`,
+  me: process.env.NEXT_PUBLIC_AUTH_ME_ENDPOINT ?? `${apiPrefix}/user`,
 }
 
 const loginPayloadSchema = z
@@ -118,7 +123,7 @@ export const categoriesService = {
       return localApi.categories.getAll()
     }
 
-    const raw = await apiClient.get('/categories')
+    const raw = await apiClient.get(`${apiPrefix}/categories`)
     return parseApiResponse(categorySchema.array(), raw)
   },
 }
@@ -168,7 +173,7 @@ export const suratMasukService = {
     if (per_page) searchParams.set('per_page', String(per_page))
 
     const queryString = searchParams.toString()
-    const endpoint = `/surat-masuk${queryString ? `?${queryString}` : ''}`
+    const endpoint = `${apiPrefix}/surat-masuk${queryString ? `?${queryString}` : ''}`
 
     const raw = await apiClient.get(endpoint)
     return parsePaginatedSuratMasuk(raw)
@@ -183,7 +188,7 @@ export const suratMasukService = {
       return item
     }
 
-    const raw = await apiClient.get(`/surat-masuk/${id}`)
+    const raw = await apiClient.get(`${apiPrefix}/surat-masuk/${id}`)
     const parsed = parseApiResponse(suratMasukApiSchema, raw)
     return mapSuratMasukFromApi(parsed)
   },
@@ -194,7 +199,7 @@ export const suratMasukService = {
     }
 
     const payload = mapSuratMasukPayload(data)
-    const raw = await apiClient.post('/surat-masuk', payload)
+    const raw = await apiClient.post(`${apiPrefix}/surat-masuk`, payload)
     const parsed = parseApiResponse(suratMasukApiSchema, raw)
     return mapSuratMasukFromApi(parsed)
   },
@@ -205,7 +210,7 @@ export const suratMasukService = {
     }
 
     const payload = mapSuratMasukPayload(data)
-    const raw = await apiClient.put(`/surat-masuk/${id}`, payload)
+    const raw = await apiClient.put(`${apiPrefix}/surat-masuk/${id}`, payload)
     const parsed = parseApiResponse(suratMasukApiSchema, raw)
     return mapSuratMasukFromApi(parsed)
   },
@@ -216,7 +221,7 @@ export const suratMasukService = {
       return
     }
 
-    await apiClient.delete(`/surat-masuk/${id}`)
+    await apiClient.delete(`${apiPrefix}/surat-masuk/${id}`)
   },
 }
 
@@ -259,7 +264,7 @@ export const suratKeluarService = {
     if (per_page) searchParams.set('per_page', String(per_page))
 
     const queryString = searchParams.toString()
-    const endpoint = `/surat-keluar${queryString ? `?${queryString}` : ''}`
+    const endpoint = `${apiPrefix}/surat-keluar${queryString ? `?${queryString}` : ''}`
     
     const raw = await apiClient.get(endpoint)
     return parsePaginatedSuratKeluar(raw)
@@ -274,7 +279,7 @@ export const suratKeluarService = {
       return item
     }
 
-    const raw = await apiClient.get(`/surat-keluar/${id}`)
+    const raw = await apiClient.get(`${apiPrefix}/surat-keluar/${id}`)
     const parsed = parseApiResponse(suratKeluarApiSchema, raw)
     return mapSuratKeluarFromApi(parsed)
   },
@@ -285,7 +290,7 @@ export const suratKeluarService = {
     }
 
     const payload = mapSuratKeluarPayload(data)
-    const raw = await apiClient.post('/surat-keluar', payload)
+    const raw = await apiClient.post(`${apiPrefix}/surat-keluar`, payload)
     const parsed = parseApiResponse(suratKeluarApiSchema, raw)
     return mapSuratKeluarFromApi(parsed)
   },
@@ -296,7 +301,7 @@ export const suratKeluarService = {
     }
 
     const payload = mapSuratKeluarPayload(data)
-    const raw = await apiClient.put(`/surat-keluar/${id}`, payload)
+    const raw = await apiClient.put(`${apiPrefix}/surat-keluar/${id}`, payload)
     const parsed = parseApiResponse(suratKeluarApiSchema, raw)
     return mapSuratKeluarFromApi(parsed)
   },
@@ -307,7 +312,7 @@ export const suratKeluarService = {
       return
     }
 
-    await apiClient.delete(`/surat-keluar/${id}`)
+    await apiClient.delete(`${apiPrefix}/surat-keluar/${id}`)
   },
 }
 
@@ -332,10 +337,10 @@ export const dashboardService = {
     })
     
     const queryString = searchParams.toString()
-    const endpoint = `/dashboard/metrics${queryString ? `?${queryString}` : ''}`
+    const endpoint = `${apiPrefix}/dashboard/metrics${queryString ? `?${queryString}` : ''}`
     
     const raw = await apiClient.get(endpoint)
-    return parseApiResponse(dashboardMetricsSchema, raw)
+    return parseDashboardMetrics(raw)
   },
 }
 
@@ -365,7 +370,7 @@ export const reportsService = {
     })
     
     const queryString = searchParams.toString()
-    const endpoint = `/reports/summary${queryString ? `?${queryString}` : ''}`
+    const endpoint = `${apiPrefix}/reports/summary${queryString ? `?${queryString}` : ''}`
     
     const raw = await apiClient.get(endpoint)
     return parseApiResponse(reportsSummarySchema, raw)
@@ -376,6 +381,6 @@ export const reportsService = {
       return localApi.reports.exportReport()
     }
 
-    return apiClient.download('/reports/export', data)
+    return apiClient.download(`${apiPrefix}/reports/export`, data)
   },
 }

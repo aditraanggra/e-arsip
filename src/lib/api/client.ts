@@ -24,27 +24,13 @@ export class ApiError extends Error {
 }
 
 class ApiClient {
-  private readonly baseURL: string
-  private readonly credentialsMode: RequestCredentials
+  private readonly baseURL = ''
+  private readonly credentialsMode: RequestCredentials = 'same-origin'
   private token: string | null = null
   private readonly clientVersion =
     process.env.NEXT_PUBLIC_APP_VERSION || process.env.NEXT_PUBLIC_APP_NAME || 'e-arsip'
 
   constructor() {
-    const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
-    const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? ''
-
-    if (!useMocks && !configuredBaseUrl && process.env.NODE_ENV !== 'production') {
-      console.warn(
-        '[api] NEXT_PUBLIC_API_BASE_URL tidak terdefinisi. Permintaan akan diarahkan ke origin yang sama.'
-      )
-    }
-
-    this.baseURL = useMocks ? '' : configuredBaseUrl
-    const shouldOmitCredentials =
-      !useMocks && configuredBaseUrl.startsWith('http')
-    this.credentialsMode = shouldOmitCredentials ? 'omit' : 'same-origin'
-
     const storedToken = loadStoredToken()
     if (storedToken) {
       this.token = storedToken

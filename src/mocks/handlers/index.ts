@@ -179,6 +179,32 @@ export const handlers = [
     )
   }),
 
+  http.post('/api/auth/login', async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+    const email = typeof body['email'] === 'string' ? (body['email'] as string) : ''
+    const password = typeof body['password'] === 'string' ? (body['password'] as string) : ''
+    
+    if (
+      (email === 'admin@earsip.com' && password === 'password') ||
+      (email === 'admin@example.com' && password === 'password123')
+    ) {
+      return HttpResponse.json({
+        data: {
+          user: mockUser,
+          token: 'mock-jwt-token-12345',
+        },
+        message: 'Login berhasil',
+      })
+    }
+    
+    return HttpResponse.json(
+      { message: 'Email atau password salah' },
+      { status: 401 }
+    )
+  }),
+
   http.post(`${API_BASE_URL}/logout`, async () => {
     await delay(MOCK_LATENCY)
     return HttpResponse.json({
@@ -187,6 +213,13 @@ export const handlers = [
   }),
 
   http.post('/logout', async () => {
+    await delay(MOCK_LATENCY)
+    return HttpResponse.json({
+      message: 'Logout berhasil',
+    })
+  }),
+
+  http.post('/api/auth/logout', async () => {
     await delay(MOCK_LATENCY)
     return HttpResponse.json({
       message: 'Logout berhasil',
@@ -225,8 +258,38 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/user', async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return HttpResponse.json(
+        { message: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    return HttpResponse.json({
+      data: mockUser,
+    })
+  }),
+
   // Categories endpoint
   http.get(`${API_BASE_URL}/categories`, async () => {
+    await delay(MOCK_LATENCY)
+    return HttpResponse.json({
+      data: mockCategories,
+    })
+  }),
+
+  http.get('/categories', async () => {
+    await delay(MOCK_LATENCY)
+    return HttpResponse.json({
+      data: mockCategories,
+    })
+  }),
+
+  http.get('/api/categories', async () => {
     await delay(MOCK_LATENCY)
     return HttpResponse.json({
       data: mockCategories,
@@ -238,6 +301,32 @@ export const handlers = [
     await delay(MOCK_LATENCY)
     
     const url = new URL(request.url)
+    const params = url.searchParams
+    
+    const filtered = filterSuratMasuk(allMockSuratMasuk, params)
+    const page = parseInt(params.get('page') || '1')
+    const perPage = parseInt(params.get('per_page') || '20')
+    
+    return HttpResponse.json(paginate(filtered, page, perPage))
+  }),
+
+  http.get('/surat-masuk', async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const url = new URL(request.url, 'https://example.com')
+    const params = url.searchParams
+    
+    const filtered = filterSuratMasuk(allMockSuratMasuk, params)
+    const page = parseInt(params.get('page') || '1')
+    const perPage = parseInt(params.get('per_page') || '20')
+    
+    return HttpResponse.json(paginate(filtered, page, perPage))
+  }),
+
+  http.get('/api/surat-masuk', async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const url = new URL(request.url, 'https://example.com')
     const params = url.searchParams
     
     const filtered = filterSuratMasuk(allMockSuratMasuk, params)
@@ -265,7 +354,117 @@ export const handlers = [
     })
   }),
 
+  http.get('/surat-masuk/:id', async ({ params }) => {
+    await delay(MOCK_LATENCY)
+    
+    const id = parseInt(params.id as string)
+    const item = allMockSuratMasuk.find(s => s.id === id)
+    
+    if (!item) {
+      return HttpResponse.json(
+        { message: 'Surat masuk tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+    
+    return HttpResponse.json({
+      data: item,
+    })
+  }),
+
+  http.get('/api/surat-masuk/:id', async ({ params }) => {
+    await delay(MOCK_LATENCY)
+    
+    const id = parseInt(params.id as string)
+    const item = allMockSuratMasuk.find(s => s.id === id)
+    
+    if (!item) {
+      return HttpResponse.json(
+        { message: 'Surat masuk tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+    
+    return HttpResponse.json({
+      data: item,
+    })
+  }),
+
   http.post(`${API_BASE_URL}/surat-masuk`, async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const body = (await request.json()) as Partial<SuratMasukCreate> | undefined
+    if (!body) {
+      return HttpResponse.json({ message: 'Payload tidak valid' }, { status: 400 })
+    }
+
+    const { nomor_surat, perihal, pengirim, tanggal, tanggal_diterima, category_id } = body
+    if (!nomor_surat || !perihal || !pengirim || !tanggal || !tanggal_diterima || !category_id) {
+      return HttpResponse.json({ message: 'Payload tidak valid' }, { status: 422 })
+    }
+
+    const category = mockCategories.find(cat => cat.id === category_id) ?? mockCategories[0]
+    const newItem = {
+      id: Math.max(...allMockSuratMasuk.map(s => s.id)) + 1,
+      nomor_surat,
+      perihal,
+      pengirim,
+      tanggal,
+      tanggal_diterima,
+      category_id,
+      keterangan: body.keterangan ?? null,
+      file_path: body.file_path ?? null,
+      category: { id: category.id, name: category.name },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    
+    allMockSuratMasuk.push(newItem)
+    
+    return HttpResponse.json({
+      data: newItem,
+      message: 'Surat masuk berhasil ditambahkan',
+    })
+  }),
+
+  http.post('/surat-masuk', async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const body = (await request.json()) as Partial<SuratMasukCreate> | undefined
+    if (!body) {
+      return HttpResponse.json({ message: 'Payload tidak valid' }, { status: 400 })
+    }
+
+    const { nomor_surat, perihal, pengirim, tanggal, tanggal_diterima, category_id } = body
+    if (!nomor_surat || !perihal || !pengirim || !tanggal || !tanggal_diterima || !category_id) {
+      return HttpResponse.json({ message: 'Payload tidak valid' }, { status: 422 })
+    }
+
+    const category = mockCategories.find(cat => cat.id === category_id) ?? mockCategories[0]
+    const newItem = {
+      id: Math.max(...allMockSuratMasuk.map(s => s.id)) + 1,
+      nomor_surat,
+      perihal,
+      pengirim,
+      tanggal,
+      tanggal_diterima,
+      category_id,
+      keterangan: body.keterangan ?? null,
+      file_path: body.file_path ?? null,
+      category: { id: category.id, name: category.name },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    
+    allMockSuratMasuk.push(newItem)
+    
+    return HttpResponse.json({
+      data: newItem,
+      message: 'Surat masuk berhasil ditambahkan',
+    })
+  }),
+
+  http.post('/api/surat-masuk', async ({ request }) => {
     await delay(MOCK_LATENCY)
     
     const body = (await request.json()) as Partial<SuratMasukCreate> | undefined
@@ -333,7 +532,109 @@ export const handlers = [
     })
   }),
 
+  http.put('/surat-masuk/:id', async ({ params, request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const id = parseInt(params.id as string)
+    const body = ((await request.json().catch(() => undefined)) ?? {}) as Partial<SuratMasukCreate>
+    const index = allMockSuratMasuk.findIndex(s => s.id === id)
+    
+    if (index === -1) {
+      return HttpResponse.json(
+        { message: 'Surat masuk tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+    
+    const updatedCategoryId = body.category_id ?? allMockSuratMasuk[index].category_id
+    const category = mockCategories.find(cat => cat.id === updatedCategoryId) ?? mockCategories[0]
+    
+    allMockSuratMasuk[index] = {
+      ...allMockSuratMasuk[index],
+      ...body,
+      category_id: updatedCategoryId,
+      category: { id: category.id, name: category.name },
+      updated_at: new Date().toISOString(),
+    }
+    
+    return HttpResponse.json({
+      data: allMockSuratMasuk[index],
+      message: 'Surat masuk berhasil diperbarui',
+    })
+  }),
+
+  http.put('/api/surat-masuk/:id', async ({ params, request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const id = parseInt(params.id as string)
+    const body = ((await request.json().catch(() => undefined)) ?? {}) as Partial<SuratMasukCreate>
+    const index = allMockSuratMasuk.findIndex(s => s.id === id)
+    
+    if (index === -1) {
+      return HttpResponse.json(
+        { message: 'Surat masuk tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+    
+    const updatedCategoryId = body.category_id ?? allMockSuratMasuk[index].category_id
+    const category = mockCategories.find(cat => cat.id === updatedCategoryId) ?? mockCategories[0]
+    
+    allMockSuratMasuk[index] = {
+      ...allMockSuratMasuk[index],
+      ...body,
+      category_id: updatedCategoryId,
+      category: { id: category.id, name: category.name },
+      updated_at: new Date().toISOString(),
+    }
+    
+    return HttpResponse.json({
+      data: allMockSuratMasuk[index],
+      message: 'Surat masuk berhasil diperbarui',
+    })
+  }),
+
   http.delete(`${API_BASE_URL}/surat-masuk/:id`, async ({ params }) => {
+    await delay(MOCK_LATENCY)
+    
+    const id = parseInt(params.id as string)
+    const index = allMockSuratMasuk.findIndex(s => s.id === id)
+    
+    if (index === -1) {
+      return HttpResponse.json(
+        { message: 'Surat masuk tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+    
+    allMockSuratMasuk.splice(index, 1)
+    
+    return HttpResponse.json({
+      message: 'Surat masuk berhasil dihapus',
+    })
+  }),
+
+  http.delete('/surat-masuk/:id', async ({ params }) => {
+    await delay(MOCK_LATENCY)
+    
+    const id = parseInt(params.id as string)
+    const index = allMockSuratMasuk.findIndex(s => s.id === id)
+    
+    if (index === -1) {
+      return HttpResponse.json(
+        { message: 'Surat masuk tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+    
+    allMockSuratMasuk.splice(index, 1)
+    
+    return HttpResponse.json({
+      message: 'Surat masuk berhasil dihapus',
+    })
+  }),
+
+  http.delete('/api/surat-masuk/:id', async ({ params }) => {
     await delay(MOCK_LATENCY)
     
     const id = parseInt(params.id as string)
@@ -367,6 +668,32 @@ export const handlers = [
     return HttpResponse.json(paginate(filtered, page, perPage))
   }),
 
+  http.get('/surat-keluar', async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const url = new URL(request.url, 'https://example.com')
+    const params = url.searchParams
+    
+    const filtered = filterSuratKeluar(allMockSuratKeluar, params)
+    const page = parseInt(params.get('page') || '1')
+    const perPage = parseInt(params.get('per_page') || '20')
+    
+    return HttpResponse.json(paginate(filtered, page, perPage))
+  }),
+
+  http.get('/api/surat-keluar', async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const url = new URL(request.url, 'https://example.com')
+    const params = url.searchParams
+    
+    const filtered = filterSuratKeluar(allMockSuratKeluar, params)
+    const page = parseInt(params.get('page') || '1')
+    const perPage = parseInt(params.get('per_page') || '20')
+    
+    return HttpResponse.json(paginate(filtered, page, perPage))
+  }),
+
   http.get(`${API_BASE_URL}/surat-keluar/:id`, async ({ params }) => {
     await delay(MOCK_LATENCY)
     
@@ -385,7 +712,115 @@ export const handlers = [
     })
   }),
 
+  http.get('/surat-keluar/:id', async ({ params }) => {
+    await delay(MOCK_LATENCY)
+    
+    const id = parseInt(params.id as string)
+    const item = allMockSuratKeluar.find(s => s.id === id)
+    
+    if (!item) {
+      return HttpResponse.json(
+        { message: 'Surat keluar tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+    
+    return HttpResponse.json({
+      data: item,
+    })
+  }),
+
+  http.get('/api/surat-keluar/:id', async ({ params }) => {
+    await delay(MOCK_LATENCY)
+    
+    const id = parseInt(params.id as string)
+    const item = allMockSuratKeluar.find(s => s.id === id)
+    
+    if (!item) {
+      return HttpResponse.json(
+        { message: 'Surat keluar tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+    
+    return HttpResponse.json({
+      data: item,
+    })
+  }),
+
   http.post(`${API_BASE_URL}/surat-keluar`, async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const body = (await request.json()) as Partial<SuratKeluarCreate> | undefined
+    if (!body) {
+      return HttpResponse.json({ message: 'Payload tidak valid' }, { status: 400 })
+    }
+
+    const { nomor_surat, perihal, tujuan, tanggal, category_id } = body
+    if (!nomor_surat || !perihal || !tujuan || !tanggal || !category_id) {
+      return HttpResponse.json({ message: 'Payload tidak valid' }, { status: 422 })
+    }
+
+    const category = mockCategories.find(cat => cat.id === category_id) ?? mockCategories[0]
+    const newItem = {
+      id: Math.max(...allMockSuratKeluar.map(s => s.id)) + 1,
+      nomor_surat,
+      perihal,
+      tujuan,
+      tanggal,
+      keterangan: body.keterangan ?? null,
+      file_path: body.file_path ?? null,
+      category_id,
+      category: { id: category.id, name: category.name },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    
+    allMockSuratKeluar.push(newItem)
+    
+    return HttpResponse.json({
+      data: newItem,
+      message: 'Surat keluar berhasil ditambahkan',
+    })
+  }),
+
+  http.post('/surat-keluar', async ({ request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const body = (await request.json()) as Partial<SuratKeluarCreate> | undefined
+    if (!body) {
+      return HttpResponse.json({ message: 'Payload tidak valid' }, { status: 400 })
+    }
+
+    const { nomor_surat, perihal, tujuan, tanggal, category_id } = body
+    if (!nomor_surat || !perihal || !tujuan || !tanggal || !category_id) {
+      return HttpResponse.json({ message: 'Payload tidak valid' }, { status: 422 })
+    }
+
+    const category = mockCategories.find(cat => cat.id === category_id) ?? mockCategories[0]
+    const newItem = {
+      id: Math.max(...allMockSuratKeluar.map(s => s.id)) + 1,
+      nomor_surat,
+      perihal,
+      tujuan,
+      tanggal,
+      keterangan: body.keterangan ?? null,
+      file_path: body.file_path ?? null,
+      category_id,
+      category: { id: category.id, name: category.name },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    
+    allMockSuratKeluar.push(newItem)
+    
+    return HttpResponse.json({
+      data: newItem,
+      message: 'Surat keluar berhasil ditambahkan',
+    })
+  }),
+
+  http.post('/api/surat-keluar', async ({ request }) => {
     await delay(MOCK_LATENCY)
     
     const body = (await request.json()) as Partial<SuratKeluarCreate> | undefined
@@ -452,7 +887,109 @@ export const handlers = [
     })
   }),
 
+  http.put('/surat-keluar/:id', async ({ params, request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const id = parseInt(params.id as string)
+    const body = ((await request.json().catch(() => undefined)) ?? {}) as Partial<SuratKeluarCreate>
+    const index = allMockSuratKeluar.findIndex(s => s.id === id)
+    
+    if (index === -1) {
+      return HttpResponse.json(
+        { message: 'Surat keluar tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+    
+    const updatedCategoryId = body.category_id ?? allMockSuratKeluar[index].category_id
+    const category = mockCategories.find(cat => cat.id === updatedCategoryId) ?? mockCategories[0]
+    
+    allMockSuratKeluar[index] = {
+      ...allMockSuratKeluar[index],
+      ...body,
+      category_id: updatedCategoryId,
+      category: { id: category.id, name: category.name },
+      updated_at: new Date().toISOString(),
+    }
+    
+    return HttpResponse.json({
+      data: allMockSuratKeluar[index],
+      message: 'Surat keluar berhasil diperbarui',
+    })
+  }),
+
+  http.put('/api/surat-keluar/:id', async ({ params, request }) => {
+    await delay(MOCK_LATENCY)
+    
+    const id = parseInt(params.id as string)
+    const body = ((await request.json().catch(() => undefined)) ?? {}) as Partial<SuratKeluarCreate>
+    const index = allMockSuratKeluar.findIndex(s => s.id === id)
+    
+    if (index === -1) {
+      return HttpResponse.json(
+        { message: 'Surat keluar tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+    
+    const updatedCategoryId = body.category_id ?? allMockSuratKeluar[index].category_id
+    const category = mockCategories.find(cat => cat.id === updatedCategoryId) ?? mockCategories[0]
+    
+    allMockSuratKeluar[index] = {
+      ...allMockSuratKeluar[index],
+      ...body,
+      category_id: updatedCategoryId,
+      category: { id: category.id, name: category.name },
+      updated_at: new Date().toISOString(),
+    }
+    
+    return HttpResponse.json({
+      data: allMockSuratKeluar[index],
+      message: 'Surat keluar berhasil diperbarui',
+    })
+  }),
+
   http.delete(`${API_BASE_URL}/surat-keluar/:id`, async ({ params }) => {
+    await delay(MOCK_LATENCY)
+    
+    const id = parseInt(params.id as string)
+    const index = allMockSuratKeluar.findIndex(s => s.id === id)
+    
+    if (index === -1) {
+      return HttpResponse.json(
+        { message: 'Surat keluar tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+    
+    allMockSuratKeluar.splice(index, 1)
+    
+    return HttpResponse.json({
+      message: 'Surat keluar berhasil dihapus',
+    })
+  }),
+
+  http.delete('/surat-keluar/:id', async ({ params }) => {
+    await delay(MOCK_LATENCY)
+    
+    const id = parseInt(params.id as string)
+    const index = allMockSuratKeluar.findIndex(s => s.id === id)
+    
+    if (index === -1) {
+      return HttpResponse.json(
+        { message: 'Surat keluar tidak ditemukan' },
+        { status: 404 }
+      )
+    }
+    
+    allMockSuratKeluar.splice(index, 1)
+    
+    return HttpResponse.json({
+      message: 'Surat keluar berhasil dihapus',
+    })
+  }),
+
+  http.delete('/api/surat-keluar/:id', async ({ params }) => {
     await delay(MOCK_LATENCY)
     
     const id = parseInt(params.id as string)
@@ -488,8 +1025,35 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/dashboard/metrics', async () => {
+    await delay(MOCK_LATENCY)
+    return HttpResponse.json({
+      data: mockDashboardMetrics,
+    })
+  }),
+
   // Reports endpoints
   http.get(`${API_BASE_URL}/reports/summary`, async () => {
+    await delay(MOCK_LATENCY)
+    return HttpResponse.json({
+      data: {
+        summary: 'Mock report summary data',
+        charts: mockDashboardMetrics.chart_data,
+      },
+    })
+  }),
+
+  http.get('/reports/summary', async () => {
+    await delay(MOCK_LATENCY)
+    return HttpResponse.json({
+      data: {
+        summary: 'Mock report summary data',
+        charts: mockDashboardMetrics.chart_data,
+      },
+    })
+  }),
+
+  http.get('/api/reports/summary', async () => {
     await delay(MOCK_LATENCY)
     return HttpResponse.json({
       data: {
@@ -503,6 +1067,36 @@ export const handlers = [
     await delay(MOCK_LATENCY)
     
     // Return a mock PDF blob
+    const pdfContent = 'Mock PDF content for export'
+    return HttpResponse.arrayBuffer(
+      new TextEncoder().encode(pdfContent).buffer,
+      {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="report.pdf"',
+        },
+      }
+    )
+  }),
+
+  http.post('/reports/export', async () => {
+    await delay(MOCK_LATENCY)
+    
+    const pdfContent = 'Mock PDF content for export'
+    return HttpResponse.arrayBuffer(
+      new TextEncoder().encode(pdfContent).buffer,
+      {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="report.pdf"',
+        },
+      }
+    )
+  }),
+
+  http.post('/api/reports/export', async () => {
+    await delay(MOCK_LATENCY)
+    
     const pdfContent = 'Mock PDF content for export'
     return HttpResponse.arrayBuffer(
       new TextEncoder().encode(pdfContent).buffer,
