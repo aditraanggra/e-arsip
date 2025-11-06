@@ -37,6 +37,8 @@ export default function SuratKeluarPage() {
       '10'
   )
   const search = searchParams.get('q') || ''
+  const defaultSort = '-date_letter'
+  const sortParam = searchParams.get('sort') || defaultSort
   const categoryIdParam = searchParams.get('category_id')
   const categoryIdNumber = categoryIdParam ? Number(categoryIdParam) : undefined
   const categoryFilter = Number.isNaN(categoryIdNumber)
@@ -59,6 +61,7 @@ export default function SuratKeluarPage() {
       categoryIdParam ?? 'all',
       dateFromParam,
       dateToParam,
+      sortParam,
     ],
     queryFn: () =>
       suratKeluarService.getAll({
@@ -68,6 +71,7 @@ export default function SuratKeluarPage() {
         category_id: categoryFilter,
         date_from: dateFromParam || undefined,
         date_to: dateToParam || undefined,
+        sort: sortParam,
       }),
   })
 
@@ -93,6 +97,7 @@ export default function SuratKeluarPage() {
     const params = new URLSearchParams()
     params.set('page', '1')
     params.set('per_page', perPage.toString())
+    params.set('sort', sortParam)
 
     if (searchInput) params.set('q', searchInput)
     if (selectedCategory && selectedCategory !== 'all') {
@@ -107,6 +112,9 @@ export default function SuratKeluarPage() {
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('page', newPage.toString())
+    if (!params.get('sort')) {
+      params.set('sort', defaultSort)
+    }
     router.push(`/surat-keluar?${params.toString()}`)
   }
 

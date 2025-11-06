@@ -37,6 +37,8 @@ export default function SuratMasukPage() {
       '10'
   )
   const search = searchParams.get('q') || ''
+  const defaultSort = '-no_agenda'
+  const sortParam = searchParams.get('sort') || defaultSort
   const categoryIdParam = searchParams.get('category_id')
   const categoryIdNumber = categoryIdParam ? Number(categoryIdParam) : undefined
   const categoryFilter = Number.isNaN(categoryIdNumber) ? undefined : categoryIdNumber
@@ -63,6 +65,7 @@ export default function SuratMasukPage() {
       dateToParam,
       districtParam,
       villageParam,
+      sortParam,
     ],
     queryFn: () => suratMasukService.getAll({ 
       page, 
@@ -73,6 +76,7 @@ export default function SuratMasukPage() {
       date_to: dateToParam || undefined,
       district: districtParam || undefined,
       village: villageParam || undefined,
+      sort: sortParam,
     }),
   })
 
@@ -100,6 +104,7 @@ export default function SuratMasukPage() {
     const params = new URLSearchParams()
     params.set('page', '1')
     params.set('per_page', perPage.toString())
+    params.set('sort', sortParam)
 
     if (searchInput) params.set('q', searchInput)
     if (selectedCategory && selectedCategory !== 'all') {
@@ -116,6 +121,9 @@ export default function SuratMasukPage() {
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('page', newPage.toString())
+    if (!params.get('sort')) {
+      params.set('sort', defaultSort)
+    }
     router.push(`/surat-masuk?${params.toString()}`)
   }
 
