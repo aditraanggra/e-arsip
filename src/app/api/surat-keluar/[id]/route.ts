@@ -1,13 +1,19 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { proxyRequest } from '@/app/api/_utils/proxy'
 
-type Params = {
-  params: { id: string }
+type RouteContext = {
+  params: Promise<{ id: string }>
 }
 
-export async function GET(request: Request, { params }: Params) {
+async function resolveId(context: RouteContext) {
+  const params = await context.params
+  return params.id
+}
+
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    return await proxyRequest(request, `/surat-keluar/${params.id}`)
+    const id = await resolveId(context)
+    return await proxyRequest(request, `/surat-keluar/${id}`)
   } catch (error) {
     console.error('Surat keluar proxy error (GET by id):', error)
     return NextResponse.json(
@@ -17,9 +23,10 @@ export async function GET(request: Request, { params }: Params) {
   }
 }
 
-export async function PUT(request: Request, { params }: Params) {
+export async function PUT(request: NextRequest, context: RouteContext) {
   try {
-    return await proxyRequest(request, `/surat-keluar/${params.id}`)
+    const id = await resolveId(context)
+    return await proxyRequest(request, `/surat-keluar/${id}`)
   } catch (error) {
     console.error('Surat keluar proxy error (PUT):', error)
     return NextResponse.json(
@@ -29,9 +36,10 @@ export async function PUT(request: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(request: Request, { params }: Params) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
-    return await proxyRequest(request, `/surat-keluar/${params.id}`)
+    const id = await resolveId(context)
+    return await proxyRequest(request, `/surat-keluar/${id}`)
   } catch (error) {
     console.error('Surat keluar proxy error (DELETE):', error)
     return NextResponse.json(
