@@ -3,6 +3,9 @@ import { toast } from 'sonner'
 import { logClientError } from '@/lib/observability'
 import { loadStoredToken, persistToken } from '@/lib/auth/token-storage'
 
+const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? ''
+const NORMALIZED_API_BASE_URL = RAW_API_BASE_URL.replace(/\/$/, '')
+
 const REQUEST_TIMEOUT_MS = 15_000
 const GET_RETRY_DELAYS_MS = [300, 800]
 
@@ -24,7 +27,7 @@ export class ApiError extends Error {
 }
 
 class ApiClient {
-  private readonly baseURL = ''
+  private readonly baseURL = NORMALIZED_API_BASE_URL
   private readonly credentialsMode: RequestCredentials = 'same-origin'
   private token: string | null = null
   private readonly clientVersion =

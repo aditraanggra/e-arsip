@@ -30,16 +30,24 @@ import {
 } from './transformers'
 
 const useLocalMocks = process.env.NEXT_PUBLIC_USE_MOCKS === 'true'
-const apiPrefix = '/api/v1'
+
+const rawApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? ''
+const normalizedApiBaseUrl = rawApiBaseUrl.replace(/\/$/, '')
+const defaultApiPrefix = normalizedApiBaseUrl.match(/\/api\/v\d+$/i)
+  ? ''
+  : '/api/v1'
+const apiPrefix = process.env.NEXT_PUBLIC_API_PREFIX ?? defaultApiPrefix
+
+const withPrefix = (path: string) => `${apiPrefix}${path}`
 
 const authEndpoints = {
   login:
     process.env.NEXT_PUBLIC_AUTH_LOGIN_ENDPOINT ??
-    `${apiPrefix}/login`,
+    withPrefix('/login'),
   logout:
     process.env.NEXT_PUBLIC_AUTH_LOGOUT_ENDPOINT ??
-    `${apiPrefix}/logout`,
-  me: process.env.NEXT_PUBLIC_AUTH_ME_ENDPOINT ?? `${apiPrefix}/user`,
+    withPrefix('/logout'),
+  me: process.env.NEXT_PUBLIC_AUTH_ME_ENDPOINT ?? withPrefix('/user'),
 }
 
 const loginPayloadSchema = z
