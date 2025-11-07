@@ -28,20 +28,26 @@ export default function DashboardPage() {
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
-  const pieData = metrics?.chart_data
+  const chartData = metrics?.harian_30_hari ?? []
+  const monthlySummary = metrics?.bulan_ini
+  const dailySummary = metrics?.hari_ini
+
+  const pieData = chartData.length
     ? [
         {
           name: 'Surat Masuk',
-          count: metrics.chart_data.reduce((sum, d) => sum + (d.surat_masuk || 0), 0),
+          count: chartData.reduce((sum, d) => sum + (d.surat_masuk || 0), 0),
         },
         {
           name: 'Surat Keluar',
-          count: metrics.chart_data.reduce((sum, d) => sum + (d.surat_keluar || 0), 0),
+          count: chartData.reduce((sum, d) => sum + (d.surat_keluar || 0), 0),
         },
       ]
     : []
 
-  const totalThisMonth = (metrics?.surat_masuk_bulan_ini || 0) + (metrics?.surat_keluar_bulan_ini || 0)
+  const totalThisMonth =
+    monthlySummary?.total ??
+    ((monthlySummary?.surat_masuk ?? 0) + (monthlySummary?.surat_keluar ?? 0))
 
   return (
     <div className="w-full min-w-0 space-y-6 xl:space-y-8">
@@ -129,11 +135,15 @@ export default function DashboardPage() {
             )}
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-yellow-700">
               <div className="rounded-md bg-yellow-100/80 px-2 py-1">
-                Masuk: {metrics?.surat_masuk_bulan_ini ?? 0}
+                Masuk: {monthlySummary?.surat_masuk ?? 0}
               </div>
               <div className="rounded-md bg-yellow-100/80 px-2 py-1">
-                Keluar: {metrics?.surat_keluar_bulan_ini ?? 0}
+                Keluar: {monthlySummary?.surat_keluar ?? 0}
               </div>
+            </div>
+            <div className="mt-3 rounded-md bg-white/70 px-3 py-2 text-xs text-yellow-800">
+              Hari ini: {dailySummary?.surat_masuk ?? 0} masuk • {dailySummary?.surat_keluar ?? 0} keluar (total{' '}
+              {dailySummary?.total ?? (dailySummary?.surat_masuk ?? 0) + (dailySummary?.surat_keluar ?? 0)})
             </div>
           </CardContent>
         </Card>
@@ -170,7 +180,7 @@ export default function DashboardPage() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                  data={metrics?.chart_data ?? []}
+                  data={chartData}
                   margin={{
                     top: 24,
                     right: 24,

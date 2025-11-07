@@ -325,26 +325,12 @@ export const suratKeluarService = {
 
 // Dashboard service
 export const dashboardService = {
-  async getMetrics(params: {
-    scope?: string
-    unit_id?: number
-    from?: string
-    to?: string
-  } = {}): Promise<DashboardMetrics> {
+  async getMetrics(): Promise<DashboardMetrics> {
     if (useLocalMocks) {
       return localApi.dashboard.getMetrics()
     }
 
-    const searchParams = new URLSearchParams()
-
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== '') {
-        searchParams.append(key, value.toString())
-      }
-    })
-
-    const queryString = searchParams.toString()
-    const endpoint = `${apiPrefix}/dashboard/metrics${queryString ? `?${queryString}` : ''}`
+    const endpoint = `${apiPrefix}/dashboard/summary`
 
     const raw = await apiClient.get(endpoint)
     return parseDashboardMetrics(raw)

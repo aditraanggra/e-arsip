@@ -8,6 +8,7 @@ import {
   dashboardMetricsSchema,
   dashboardMetricsApiSchema,
   dashboardChartPointApiSchema,
+  dashboardPeriodSummarySchema,
   type PaginatedResponse,
   type PaginationMeta,
   type SuratMasuk,
@@ -293,6 +294,31 @@ const normalizeChartPoint = (
   }
 }
 
+const normalizePeriodSummary = (
+  candidate: AnyRecord | undefined,
+  fallbackMasuk = 0,
+  fallbackKeluar = 0
+) => {
+  const suratMasuk =
+    pickNumber(candidate ?? {}, ['surat_masuk', 'incoming', 'masuk']) ??
+    fallbackMasuk
+
+  const suratKeluar =
+    pickNumber(candidate ?? {}, ['surat_keluar', 'outgoing', 'keluar']) ??
+    fallbackKeluar
+
+  const total =
+    pickNumber(candidate ?? {}, ['total', 'jumlah', 'total_surat']) ??
+    suratMasuk +
+      suratKeluar
+
+  return dashboardPeriodSummarySchema.parse({
+    surat_masuk: suratMasuk,
+    surat_keluar: suratKeluar,
+    total,
+  })
+}
+
 const normalizeDashboardMetrics = (
   raw: DashboardMetricsApi
 ): DashboardMetrics => {
@@ -330,6 +356,7 @@ const normalizeDashboardMetrics = (
 
   const chartCandidates: unknown[][] = []
 
+  if (Array.isArray(raw.harian_30_hari)) chartCandidates.push(raw.harian_30_hari)
   if (Array.isArray(raw.chart_data)) chartCandidates.push(raw.chart_data)
   if (Array.isArray(raw.charts)) chartCandidates.push(raw.charts)
 
@@ -351,16 +378,26 @@ const normalizeDashboardMetrics = (
     chartCandidates[0] ??
     ([] as unknown[])
 
-  const chart_data = chartSource.map((point, index) =>
+  const harian_30_hari = chartSource.map((point, index) =>
     normalizeChartPoint(dashboardChartPointApiSchema.parse(point), index)
+  )
+
+  const bulan_ini = normalizePeriodSummary(
+    raw.bulan_ini as AnyRecord | undefined,
+    masukBulanIni,
+    keluarBulanIni
+  )
+
+  const hari_ini = normalizePeriodSummary(
+    raw.hari_ini as AnyRecord | undefined
   )
 
   return dashboardMetricsSchema.parse({
     total_surat_masuk: totalMasuk,
     total_surat_keluar: totalKeluar,
-    surat_masuk_bulan_ini: masukBulanIni,
-    surat_keluar_bulan_ini: keluarBulanIni,
-    chart_data,
+    bulan_ini,
+    hari_ini,
+    harian_30_hari,
   })
 }
 

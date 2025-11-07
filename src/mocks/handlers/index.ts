@@ -1010,7 +1010,7 @@ export const handlers = [
   }),
 
   // Dashboard endpoint
-  http.get(`${API_BASE_URL}/dashboard/metrics`, async () => {
+  http.get(`${API_BASE_URL}/dashboard/summary`, async () => {
     await delay(MOCK_LATENCY)
     return HttpResponse.json({
       data: mockDashboardMetrics,
@@ -1018,14 +1018,14 @@ export const handlers = [
   }),
 
   // Dashboard endpoint - Relative path for same-origin requests
-  http.get('/dashboard/metrics', async () => {
+  http.get('/dashboard/summary', async () => {
     await delay(MOCK_LATENCY)
     return HttpResponse.json({
       data: mockDashboardMetrics,
     })
   }),
 
-  http.get('/api/dashboard/metrics', async () => {
+  http.get('/api/dashboard/summary', async () => {
     await delay(MOCK_LATENCY)
     return HttpResponse.json({
       data: mockDashboardMetrics,
@@ -1038,7 +1038,7 @@ export const handlers = [
     return HttpResponse.json({
       data: {
         summary: 'Mock report summary data',
-        charts: mockDashboardMetrics.chart_data,
+        charts: mockDashboardMetrics.harian_30_hari,
       },
     })
   }),
@@ -1048,7 +1048,7 @@ export const handlers = [
     return HttpResponse.json({
       data: {
         summary: 'Mock report summary data',
-        charts: mockDashboardMetrics.chart_data,
+        charts: mockDashboardMetrics.harian_30_hari,
       },
     })
   }),
@@ -1058,7 +1058,7 @@ export const handlers = [
     return HttpResponse.json({
       data: {
         summary: 'Mock report summary data',
-        charts: mockDashboardMetrics.chart_data,
+        charts: mockDashboardMetrics.harian_30_hari,
       },
     })
   }),

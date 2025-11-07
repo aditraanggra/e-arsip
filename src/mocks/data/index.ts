@@ -160,9 +160,17 @@ export function generateMockSuratKeluar(count: number): SuratKeluar[] {
 export const mockDashboardMetrics: DashboardMetrics = {
   total_surat_masuk: 156,
   total_surat_keluar: 89,
-  surat_masuk_bulan_ini: 23,
-  surat_keluar_bulan_ini: 15,
-  chart_data: Array.from({ length: 30 }, (_, index) => {
+  bulan_ini: {
+    surat_masuk: 23,
+    surat_keluar: 15,
+    total: 38,
+  },
+  hari_ini: {
+    surat_masuk: 2,
+    surat_keluar: 1,
+    total: 3,
+  },
+  harian_30_hari: Array.from({ length: 30 }, (_, index) => {
     const date = new Date()
     date.setDate(date.getDate() - (29 - index))
     return {

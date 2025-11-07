@@ -163,6 +163,7 @@ function computeDashboardMetrics(): DashboardMetrics {
   const now = new Date()
   const currentMonth = now.getMonth()
   const currentYear = now.getFullYear()
+  const todayKey = now.toISOString().split('T')[0]
 
   const suratMasukBulanIni = suratMasukStore.filter((item) => {
     const date = new Date(item.tanggal)
@@ -174,15 +175,29 @@ function computeDashboardMetrics(): DashboardMetrics {
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear
   }).length
 
-  // Use existing mock chart data for visual richness
-  const chartData = mockDashboardMetrics.chart_data
+  const suratMasukHariIni = suratMasukStore.filter(
+    (item) => item.tanggal.slice(0, 10) === todayKey
+  ).length
+  const suratKeluarHariIni = suratKeluarStore.filter(
+    (item) => item.tanggal.slice(0, 10) === todayKey
+  ).length
+
+  const chartData = mockDashboardMetrics.harian_30_hari
 
   return {
     total_surat_masuk: totalMasuk,
     total_surat_keluar: totalKeluar,
-    surat_masuk_bulan_ini: suratMasukBulanIni,
-    surat_keluar_bulan_ini: suratKeluarBulanIni,
-    chart_data: chartData,
+    bulan_ini: {
+      surat_masuk: suratMasukBulanIni,
+      surat_keluar: suratKeluarBulanIni,
+      total: suratMasukBulanIni + suratKeluarBulanIni,
+    },
+    hari_ini: {
+      surat_masuk: suratMasukHariIni,
+      surat_keluar: suratKeluarHariIni,
+      total: suratMasukHariIni + suratKeluarHariIni,
+    },
+    harian_30_hari: chartData,
   }
 }
 
@@ -208,7 +223,7 @@ function buildSummary(params: ReportsQuery): ReportsSummary {
 
   return {
     summary: summaryParts.join(' '),
-    charts: metrics.chart_data,
+    charts: metrics.harian_30_hari,
   }
 }
 

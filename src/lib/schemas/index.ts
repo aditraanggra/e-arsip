@@ -151,19 +151,29 @@ export const apiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
     .passthrough()
 
 // Dashboard metrics schema
+export const dashboardPeriodSummarySchema = z
+  .object({
+    surat_masuk: z.number(),
+    surat_keluar: z.number(),
+    total: z.number(),
+  })
+  .strict()
+
+export const dashboardChartPointSchema = z
+  .object({
+    date: z.string(),
+    surat_masuk: z.number(),
+    surat_keluar: z.number(),
+  })
+  .strict()
+
 export const dashboardMetricsSchema = z
   .object({
     total_surat_masuk: z.number(),
     total_surat_keluar: z.number(),
-    surat_masuk_bulan_ini: z.number(),
-    surat_keluar_bulan_ini: z.number(),
-    chart_data: z.array(
-      z.object({
-        date: z.string(),
-        surat_masuk: z.number(),
-        surat_keluar: z.number(),
-      })
-    ),
+    bulan_ini: dashboardPeriodSummarySchema,
+    hari_ini: dashboardPeriodSummarySchema,
+    harian_30_hari: z.array(dashboardChartPointSchema),
   })
   .strict()
 
@@ -182,6 +192,14 @@ export const dashboardChartPointApiSchema = z
   })
   .passthrough()
 
+export const dashboardPeriodSummaryApiSchema = z
+  .object({
+    surat_masuk: z.coerce.number().optional(),
+    surat_keluar: z.coerce.number().optional(),
+    total: z.coerce.number().optional(),
+  })
+  .passthrough()
+
 export const dashboardMetricsApiSchema = z
   .object({
     total_surat_masuk: z.coerce.number().optional(),
@@ -196,6 +214,9 @@ export const dashboardMetricsApiSchema = z
     outgoing_this_month: z.coerce.number().optional(),
     surat_masuk_bulan: z.coerce.number().optional(),
     surat_keluar_bulan: z.coerce.number().optional(),
+    bulan_ini: dashboardPeriodSummaryApiSchema.optional(),
+    hari_ini: dashboardPeriodSummaryApiSchema.optional(),
+    harian_30_hari: z.array(dashboardChartPointApiSchema).optional(),
     chart_data: z.array(dashboardChartPointApiSchema).optional(),
     charts: z.array(dashboardChartPointApiSchema).optional(),
   })
