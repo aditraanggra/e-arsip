@@ -40,7 +40,7 @@ import {
 import { CalendarIcon, Loader2, Plus, Upload } from 'lucide-react'
 
 const suratKeluarFormSchema = z.object({
-  category_id: z.coerce.number().min(1, 'Kategori surat wajib dipilih'),
+  category_id: z.number().min(1, 'Kategori surat wajib dipilih'),
   tanggal: z.string().min(1, 'Tanggal surat wajib diisi'),
   nomor_surat: z.string().min(1, 'Nomor surat wajib diisi'),
   tujuan: z.string().min(1, 'Tujuan surat wajib diisi'),

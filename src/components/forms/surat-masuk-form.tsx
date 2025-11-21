@@ -49,7 +49,7 @@ const suratMasukFormSchema = z.object({
   tanggal_diterima: z.string().min(1, 'Tanggal agenda wajib diisi'),
   keterangan: z.string().optional(),
   file_path: z.string().optional(),
-  category_id: z.coerce.number().min(1, 'Jenis surat wajib dipilih'),
+  category_id: z.number().min(1, 'Jenis surat wajib dipilih'),
   district: z.string().min(1, 'Kecamatan wajib diisi'),
   village: z.string().optional(),
   contact: z.string().optional(),
@@ -113,7 +113,11 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
   useEffect(() => {
     if (initialData) {
       form.reset({
-        no_agenda: initialData.no_agenda ?? '',
+        no_agenda:
+          initialData.no_agenda !== null &&
+          initialData.no_agenda !== undefined
+            ? String(initialData.no_agenda)
+            : '',
         nomor_surat: initialData.nomor_surat,
         perihal: initialData.perihal,
         pengirim: initialData.pengirim ?? '',

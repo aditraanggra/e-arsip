@@ -58,8 +58,8 @@ let nextSuratMasukId = Math.max(...suratMasukStore.map((item) => item.id)) + 1
 let nextSuratKeluarId = Math.max(...suratKeluarStore.map((item) => item.id)) + 1
 let nextCategoryId = Math.max(...categoryStore.map((item) => item.id)) + 1
 
-function normalizeText(value: string) {
-  return value.toLowerCase()
+function normalizeText(value: string | number) {
+  return value.toString().toLowerCase()
 }
 
 function paginate<T>(items: T[], page = 1, perPage = 10): PaginatedResponse<T> {

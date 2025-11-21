@@ -41,11 +41,12 @@ function filterSuratMasuk(data: SuratMasuk[], params: URLSearchParams) {
   
   const q = params.get('q') || params.get('search')
   if (q) {
+    const qLower = q.toLowerCase()
     filtered = filtered.filter(item => 
-      item.perihal.toLowerCase().includes(q.toLowerCase()) ||
-      (item.pengirim ?? '').toLowerCase().includes(q.toLowerCase()) ||
-      item.nomor_surat.toLowerCase().includes(q.toLowerCase()) ||
-      (item.no_agenda ?? '').toLowerCase().includes(q.toLowerCase())
+      item.perihal.toLowerCase().includes(qLower) ||
+      (item.pengirim ?? '').toLowerCase().includes(qLower) ||
+      item.nomor_surat.toLowerCase().includes(qLower) ||
+      (item.no_agenda ?? '').toString().toLowerCase().includes(qLower)
     )
   }
   
