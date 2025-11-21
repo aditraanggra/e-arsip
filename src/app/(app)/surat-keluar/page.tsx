@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -109,9 +109,17 @@ export default function SuratKeluarPage() {
     router.push(`/surat-keluar?${params.toString()}`)
   }
 
+  const paginationMeta = suratKeluarData?.meta
+  const currentPage = paginationMeta?.current_page ?? page
+  const lastPage = paginationMeta?.last_page ?? currentPage
+  const perPageValue = paginationMeta?.per_page ?? perPage
+
   const handlePageChange = (newPage: number) => {
+    const safePage = Math.min(Math.max(newPage, 1), lastPage || 1)
+    if (safePage === currentPage) return
     const params = new URLSearchParams(searchParams.toString())
-    params.set('page', newPage.toString())
+    params.set('page', safePage.toString())
+    params.set('per_page', perPageValue.toString())
     if (!params.get('sort')) {
       params.set('sort', defaultSort)
     }
@@ -149,6 +157,14 @@ export default function SuratKeluarPage() {
     })
   }, [suratKeluarData])
 
+  const visiblePages = useMemo(() => {
+    const pages = new Set([1, lastPage, currentPage])
+    for (let i = currentPage - 2; i <= currentPage + 2; i += 1) {
+      if (i > 1 && i < lastPage) pages.add(i)
+    }
+    return Array.from(pages).sort((a, b) => a - b)
+  }, [currentPage, lastPage])
+
   return (
     <div className="w-full min-w-0 space-y-6">
       <div className="flex items-center justify-between">
@@ -158,8 +174,8 @@ export default function SuratKeluarPage() {
             Kelola arsip surat keluar organisasi
           </p>
         </div>
-        <Button asChild disabled>
-          <Link href="#">
+        <Button asChild>
+          <Link href="/surat-keluar/create">
             <Plus className="mr-2 h-4 w-4" />
             Tambah Surat
           </Link>
@@ -308,26 +324,45 @@ export default function SuratKeluarPage() {
         </Table>
       </div>
 
-      {suratKeluarData?.meta && (
+      {paginationMeta && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Menampilkan {(suratKeluarData.meta?.from ?? 0)} -{' '}
-            {(suratKeluarData.meta?.to ?? 0)} dari {(suratKeluarData.meta?.total ?? 0)} data
+            Menampilkan {(paginationMeta.from ?? 0)} -{' '}
+            {(paginationMeta.to ?? 0)} dari {(paginationMeta.total ?? 0)} data
           </p>
-          <div className="flex gap-1">
+          <div className="flex gap-1 items-center">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page <= 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1}
             >
               Sebelumnya
             </Button>
+            {visiblePages.map((pageNumber, index) => {
+              const prevPage = visiblePages[index - 1]
+              const showEllipsis = prevPage && pageNumber - prevPage > 1
+              return (
+                <Fragment key={pageNumber}>
+                  {showEllipsis && (
+                    <span className="px-2 text-sm text-muted-foreground">...</span>
+                  )}
+                  <Button
+                    variant={pageNumber === currentPage ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handlePageChange(pageNumber)}
+                    aria-current={pageNumber === currentPage ? 'page' : undefined}
+                  >
+                    {pageNumber}
+                  </Button>
+                </Fragment>
+              )
+            })}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handlePageChange(page + 1)}
-              disabled={page >= (suratKeluarData.meta?.last_page ?? page)}
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= lastPage}
             >
               Selanjutnya
             </Button>

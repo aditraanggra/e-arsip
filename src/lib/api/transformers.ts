@@ -472,6 +472,10 @@ export function mapSuratMasukFromApi(
     ]) ??
     pickString(record, ['dept_disposition', 'disposition_department'])
 
+  const agendaNumber =
+    pickString(record, ['no_agenda', 'nomor_agenda', 'agenda_number']) ??
+    pickNumber(record, ['no_agenda', 'nomor_agenda', 'agenda_number'])
+
   const mapped = {
     id: raw.id,
     nomor_surat: nomorSurat,
@@ -487,8 +491,7 @@ export function mapSuratMasukFromApi(
       pickString(record, ['district', 'kecamatan', 'district_name']) ?? null,
     village:
       pickString(record, ['village', 'desa', 'kelurahan', 'village_name']) ?? null,
-    no_agenda:
-      pickString(record, ['no_agenda', 'nomor_agenda', 'agenda_number']) ?? null,
+    no_agenda: agendaNumber ?? null,
     contact:
       pickString(record, ['contact', 'phone', 'telepon', 'telp']) ?? null,
     address: pickString(record, ['address', 'alamat']) ?? null,
@@ -598,10 +601,12 @@ export function mapSuratMasukPayload(
     address?: string | null
     dept_disposition?: string | null
     desc_disposition?: string | null
+    no_agenda?: string | null
   }
 ) {
   return removeUndefined({
     no_letter: data.nomor_surat,
+    no_agenda: data.no_agenda ?? null,
     subject: data.perihal,
     sender: data.pengirim,
     date_letter: data.tanggal,

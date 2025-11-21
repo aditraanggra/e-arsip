@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { z } from 'zod'
-import { suratMasukSchema } from '@/lib/schemas'
-import { categoriesService, suratMasukService } from '@/lib/api/services'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { categoriesService, suratKeluarService } from '@/lib/api/services'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -40,57 +39,27 @@ import {
 } from '@/components/ui/dialog'
 import { CalendarIcon, Loader2, Plus, Upload } from 'lucide-react'
 
-const suratMasukFormSchema = z.object({
-  no_agenda: z.string().min(1, 'No agenda wajib diisi'),
-  nomor_surat: z.string().min(1, 'Nomor surat wajib diisi'),
-  perihal: z.string().min(1, 'Perihal wajib diisi'),
-  pengirim: z.string().min(1, 'Asal surat wajib diisi'),
+const suratKeluarFormSchema = z.object({
+  category_id: z.coerce.number().min(1, 'Kategori surat wajib dipilih'),
   tanggal: z.string().min(1, 'Tanggal surat wajib diisi'),
-  tanggal_diterima: z.string().min(1, 'Tanggal agenda wajib diisi'),
-  keterangan: z.string().optional(),
+  nomor_surat: z.string().min(1, 'Nomor surat wajib diisi'),
+  tujuan: z.string().min(1, 'Tujuan surat wajib diisi'),
+  perihal: z.string().min(1, 'Perihal wajib diisi'),
   file_path: z.string().optional(),
-  category_id: z.coerce.number().min(1, 'Jenis surat wajib dipilih'),
-  district: z.string().min(1, 'Kecamatan wajib diisi'),
-  village: z.string().optional(),
-  contact: z.string().optional(),
-  address: z.string().optional(),
-  dept_disposition: z.string().optional(),
-  desc_disposition: z.string().optional(),
 })
 
-type SuratMasukFormValues = z.infer<typeof suratMasukFormSchema>
+type SuratKeluarFormValues = z.infer<typeof suratKeluarFormSchema>
 
-interface SuratMasukFormProps {
-  initialData?: z.infer<typeof suratMasukSchema>
-  isEdit?: boolean
-}
-
-const defaultValues: SuratMasukFormValues = {
-  no_agenda: '',
-  nomor_surat: '',
-  perihal: '',
-  pengirim: '',
-  tanggal: '',
-  tanggal_diterima: '',
-  keterangan: '',
-  file_path: '',
+const defaultValues: SuratKeluarFormValues = {
   category_id: 0,
-  district: '',
-  village: '',
-  contact: '',
-  address: '',
-  dept_disposition: '',
-  desc_disposition: '',
+  tanggal: '',
+  nomor_surat: '',
+  tujuan: '',
+  perihal: '',
+  file_path: '',
 }
 
-const formatDateInput = (value?: string | null) => {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toISOString().slice(0, 10)
-}
-
-export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormProps) {
+export function SuratKeluarForm() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -100,37 +69,15 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryDesc, setNewCategoryDesc] = useState('')
 
+  const form = useForm<SuratKeluarFormValues>({
+    resolver: zodResolver(suratKeluarFormSchema),
+    defaultValues,
+  })
+
   const { data: categories } = useQuery({
     queryKey: ['categories'],
     queryFn: () => categoriesService.getAll(),
   })
-
-  const form = useForm<SuratMasukFormValues>({
-    resolver: zodResolver(suratMasukFormSchema),
-    defaultValues,
-  })
-
-  useEffect(() => {
-    if (initialData) {
-      form.reset({
-        no_agenda: initialData.no_agenda ?? '',
-        nomor_surat: initialData.nomor_surat,
-        perihal: initialData.perihal,
-        pengirim: initialData.pengirim ?? '',
-        tanggal: formatDateInput(initialData.tanggal),
-        tanggal_diterima: formatDateInput(initialData.tanggal_diterima),
-        keterangan: initialData.keterangan ?? '',
-        file_path: initialData.file_path ?? '',
-        category_id: initialData.category_id,
-        district: initialData.district ?? '',
-        village: initialData.village ?? '',
-        contact: initialData.contact ?? '',
-        address: initialData.address ?? '',
-        dept_disposition: initialData.dept_disposition ?? '',
-        desc_disposition: initialData.desc_disposition ?? '',
-      })
-    }
-  }, [initialData, form])
 
   const handleCreateCategory = async () => {
     const name = newCategoryName.trim()
@@ -160,51 +107,34 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
     }
   }
 
-  const onSubmit = async (values: SuratMasukFormValues) => {
+  const onSubmit = async (values: SuratKeluarFormValues) => {
     setIsSubmitting(true)
     try {
       const payload = {
-        nomor_surat: values.nomor_surat,
-        perihal: values.perihal,
-        pengirim: values.pengirim,
-        tanggal: values.tanggal,
-        tanggal_diterima: values.tanggal_diterima,
-        keterangan: values.keterangan?.trim() || undefined,
-        file_path: values.file_path?.trim() || undefined,
         category_id: values.category_id,
-        no_agenda: values.no_agenda.trim(),
-        district: values.district.trim(),
-        village: values.village?.trim() || undefined,
-        contact: values.contact?.trim() || undefined,
-        address: values.address?.trim() || undefined,
-        dept_disposition: values.dept_disposition?.trim() || undefined,
-        desc_disposition: values.desc_disposition?.trim() || undefined,
+        tanggal: values.tanggal,
+        nomor_surat: values.nomor_surat,
+        tujuan: values.tujuan,
+        perihal: values.perihal,
+        file_path: values.file_path?.trim() || undefined,
+        keterangan: undefined,
       }
 
-      if (isEdit && initialData) {
-        await suratMasukService.update(initialData.id, payload)
-        toast.success('Surat masuk berhasil diperbarui')
-        router.push(`/surat-masuk/${initialData.id}`)
-        router.refresh()
-      } else {
-        const result = await suratMasukService.create(payload)
-        toast.success('Surat masuk berhasil dibuat')
+      await suratKeluarService.create(payload)
+      toast.success('Surat keluar berhasil dibuat')
 
-        if (submitIntent === 'create-new') {
-          form.reset({ ...defaultValues, category_id: values.category_id })
-          setSubmitIntent('create')
-          return
-        }
-
-        router.push(`/surat-masuk/${result.id}`)
-        router.refresh()
+      if (submitIntent === 'create-new') {
+        form.reset({ ...defaultValues, category_id: values.category_id })
+        setSubmitIntent('create')
+        return
       }
+
+      router.push('/surat-keluar')
+      router.refresh()
     } catch (error: unknown) {
       const message =
-        error instanceof Error
-          ? error.message
-          : 'Terjadi kesalahan saat menyimpan data'
-      toast.error(message || 'Terjadi kesalahan saat menyimpan data')
+        error instanceof Error ? error.message : 'Gagal menyimpan surat keluar'
+      toast.error(message || 'Gagal menyimpan surat keluar')
     } finally {
       setIsSubmitting(false)
     }
@@ -213,25 +143,8 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <section className="space-y-4 rounded-xl border border-emerald-100 bg-emerald-50/40 p-5 shadow-sm">
-          <div>
-            <p className="text-sm font-semibold text-emerald-900">Agenda Surat</p>
-            <p className="text-sm text-muted-foreground">Lengkapi informasi agenda surat masuk.</p>
-          </div>
+        <section className="space-y-4 rounded-xl border border-emerald-100 bg-white p-5 shadow-sm">
           <div className="grid gap-4 md:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="no_agenda"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>No Agenda</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Isi nomor agenda" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="category_id"
@@ -248,14 +161,14 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
                     }}
                   >
                     <div className="flex items-center justify-between">
-                      <FormLabel>Jenis Surat</FormLabel>
+                      <FormLabel>Kategori Surat</FormLabel>
                       <DialogTrigger asChild>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
                           className="h-9 w-9"
-                          title="Tambah jenis surat"
+                          title="Tambah kategori"
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
@@ -267,7 +180,7 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Pilih jenis surat" />
+                          <SelectValue placeholder="Pilih kategori" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -282,14 +195,14 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
 
                     <DialogContent className="sm:max-w-lg">
                       <DialogHeader>
-                        <DialogTitle>Tambah Jenis Surat</DialogTitle>
+                        <DialogTitle>Tambah Kategori Surat</DialogTitle>
                         <DialogDescription>
-                          Tambahkan kategori baru untuk mengelompokkan surat masuk.
+                          Buat kategori baru agar surat keluar lebih terorganisir.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <FormLabel>Nama Jenis Surat</FormLabel>
+                          <FormLabel>Nama Kategori</FormLabel>
                           <Input
                             placeholder="Misal: Keuangan"
                             value={newCategoryName}
@@ -299,7 +212,7 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
                         <div className="space-y-2">
                           <FormLabel>Deskripsi (opsional)</FormLabel>
                           <Textarea
-                            placeholder="Tambahkan deskripsi singkat kategori"
+                            placeholder="Tambahkan deskripsi singkat"
                             value={newCategoryDesc}
                             onChange={(event) => setNewCategoryDesc(event.target.value)}
                           />
@@ -329,27 +242,6 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
             />
             <FormField
               control={form.control}
-              name="tanggal_diterima"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tanggal Agenda</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <CalendarIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        type="date"
-                        className="pl-10"
-                        value={field.value ?? ''}
-                        onChange={field.onChange}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
               name="tanggal"
               render={({ field }) => (
                 <FormItem>
@@ -369,23 +261,14 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
                 </FormItem>
               )}
             />
-          </div>
-        </section>
-
-        <section className="space-y-4 rounded-xl border border-emerald-100 bg-white p-5 shadow-sm">
-          <div>
-            <p className="text-sm font-semibold text-emerald-900">Detail Surat</p>
-            <p className="text-sm text-muted-foreground">Informasi asal, kontak, dan isi surat.</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
             <FormField
               control={form.control}
-              name="pengirim"
+              name="tujuan"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Asal Surat</FormLabel>
+                  <FormLabel>Tujuan</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nama instansi atau pengirim" {...field} />
+                    <Input placeholder="Tujuan surat" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -396,61 +279,9 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
               name="nomor_surat"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>No Surat</FormLabel>
+                  <FormLabel>Nomor Surat</FormLabel>
                   <FormControl>
                     <Input placeholder="Nomor surat" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="contact"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>No Kontak</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nomor telepon atau kontak lain" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Alamat</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Alamat lengkap pengirim" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="district"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Kecamatan</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nama kecamatan" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="village"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Desa</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nama desa atau kelurahan" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -490,10 +321,16 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
                         }}
                       />
                       <Upload className="mb-3 h-8 w-8 text-emerald-600" />
-                      <p className="text-sm font-medium text-emerald-900">Drag & Drop your files or Browse</p>
-                      <p className="text-xs text-muted-foreground">Unggah dokumen pendukung (PDF/JPG/PNG)</p>
+                      <p className="text-sm font-medium text-emerald-900">
+                        Drag & Drop your files or Browse
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Unggah dokumen pendukung (PDF/JPG/PNG)
+                      </p>
                       {field.value && (
-                        <p className="mt-2 text-sm font-medium text-emerald-800">Dipilih: {field.value}</p>
+                        <p className="mt-2 text-sm font-medium text-emerald-800">
+                          Dipilih: {field.value}
+                        </p>
                       )}
                     </label>
                   </FormControl>
@@ -502,45 +339,6 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
                     value={field.value ?? ''}
                     onChange={field.onChange}
                   />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </section>
-
-        <section className="space-y-4 rounded-xl border border-emerald-100 bg-white p-5 shadow-sm">
-          <div>
-            <p className="text-sm font-semibold text-emerald-900">Disposisi Surat</p>
-            <p className="text-sm text-muted-foreground">Catat arahan disposisi untuk surat ini.</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="dept_disposition"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Disposisi Bagian</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Bagian/Departemen tujuan" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="desc_disposition"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Keterangan Disposisi</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Instruksi atau catatan disposisi"
-                      className="min-h-[100px]"
-                      {...field}
-                    />
-                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -557,21 +355,19 @@ export function SuratMasukForm({ initialData, isEdit = false }: SuratMasukFormPr
             {isSubmitting && submitIntent === 'create' && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {isEdit ? 'Perbarui' : 'Create'}
+            Create
           </Button>
-          {!isEdit && (
-            <Button
-              type="submit"
-              variant="secondary"
-              disabled={isSubmitting}
-              onClick={() => setSubmitIntent('create-new')}
-            >
-              {isSubmitting && submitIntent === 'create-new' && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Create &amp; create another
-            </Button>
-          )}
+          <Button
+            type="submit"
+            variant="secondary"
+            disabled={isSubmitting}
+            onClick={() => setSubmitIntent('create-new')}
+          >
+            {isSubmitting && submitIntent === 'create-new' && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Create &amp; create another
+          </Button>
           <Button
             type="button"
             variant="outline"

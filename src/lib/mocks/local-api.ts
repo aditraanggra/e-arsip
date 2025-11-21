@@ -28,6 +28,7 @@ type SuratMasukQuery = {
   per_page?: number
   district?: string
   village?: string
+  sort?: string
 }
 
 type SuratKeluarQuery = {
@@ -51,9 +52,11 @@ type ReportsQuery = {
 
 const suratMasukStore: SuratMasuk[] = [...initialSuratMasuk]
 const suratKeluarStore: SuratKeluar[] = [...initialSuratKeluar]
+const categoryStore: Category[] = [...mockCategories]
 
 let nextSuratMasukId = Math.max(...suratMasukStore.map((item) => item.id)) + 1
 let nextSuratKeluarId = Math.max(...suratKeluarStore.map((item) => item.id)) + 1
+let nextCategoryId = Math.max(...categoryStore.map((item) => item.id)) + 1
 
 function normalizeText(value: string) {
   return value.toLowerCase()
@@ -122,6 +125,39 @@ function filterSuratMasuk(items: SuratMasuk[], params: SuratMasukQuery) {
   }
 
   return filtered
+}
+
+function parseAgendaNumber(value: string | number | null | undefined) {
+  if (value === null || value === undefined) return Number.NEGATIVE_INFINITY
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  const digits = value.toString().replace(/\D+/g, '')
+  if (!digits) return Number.NEGATIVE_INFINITY
+  const parsed = Number(digits)
+  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY
+}
+
+function sortSuratMasuk(items: SuratMasuk[], sort?: string) {
+  if (!sort) return items
+
+  const direction = sort.startsWith('-') ? 'desc' : 'asc'
+  const field = sort.replace(/^-/, '')
+
+  const compare = (a: SuratMasuk, b: SuratMasuk) => {
+    if (field === 'no_agenda') {
+      const diff = parseAgendaNumber(b.no_agenda) - parseAgendaNumber(a.no_agenda)
+      return direction === 'desc' ? diff : -diff
+    }
+
+    if (field === 'tanggal') {
+      const diff =
+        new Date(b.tanggal ?? 0).getTime() - new Date(a.tanggal ?? 0).getTime()
+      return direction === 'desc' ? diff : -diff
+    }
+
+    return 0
+  }
+
+  return [...items].sort(compare)
 }
 
 function filterSuratKeluar(items: SuratKeluar[], params: SuratKeluarQuery) {
@@ -257,7 +293,26 @@ export const localApi = {
 
   categories: {
     async getAll(): Promise<Category[]> {
-      return mockCategories
+      return categoryStore
+    },
+    async create(data: { name: string; desc?: string }): Promise<Category> {
+      const trimmedName = data.name.trim()
+      if (!trimmedName) {
+        throw new Error('Nama kategori wajib diisi')
+      }
+      const existing = categoryStore.find(
+        (category) => category.name.toLowerCase() === trimmedName.toLowerCase()
+      )
+      if (existing) {
+        throw new Error('Kategori dengan nama tersebut sudah ada')
+      }
+      const newCategory: Category = {
+        id: nextCategoryId++,
+        name: trimmedName,
+        desc: data.desc?.trim() || '',
+      }
+      categoryStore.push(newCategory)
+      return newCategory
     },
   },
 
@@ -266,7 +321,8 @@ export const localApi = {
       const page = params.page ?? 1
       const perPage = params.per_page ?? 10
       const filtered = filterSuratMasuk(suratMasukStore, params)
-      return paginate(filtered, page, perPage)
+      const sorted = sortSuratMasuk(filtered, params.sort)
+      return paginate(sorted, page, perPage)
     },
 
     async getById(id: number): Promise<SuratMasuk | undefined> {
@@ -274,7 +330,7 @@ export const localApi = {
     },
 
     async create(data: SuratMasukCreate): Promise<SuratMasuk> {
-      const category = mockCategories.find((cat) => cat.id === data.category_id)
+      const category = categoryStore.find((cat) => cat.id === data.category_id)
       if (!category) {
         throw new Error('Kategori tidak ditemukan')
       }
@@ -292,13 +348,13 @@ export const localApi = {
         file_path: data.file_path,
         category_id: data.category_id,
         category: { id: category.id, name: category.name },
-        no_agenda: generatedAgenda,
-        district: null,
-        village: null,
-        contact: null,
-        address: null,
-        dept_disposition: null,
-        desc_disposition: data.keterangan ?? null,
+        no_agenda: data.no_agenda ?? generatedAgenda,
+        district: data.district ?? null,
+        village: data.village ?? null,
+        contact: data.contact ?? null,
+        address: data.address ?? null,
+        dept_disposition: data.dept_disposition ?? null,
+        desc_disposition: data.desc_disposition ?? data.keterangan ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
@@ -316,11 +372,11 @@ export const localApi = {
       const current = suratMasukStore[index]
       const fallbackCategory = current.category
         ? { id: current.category.id, name: current.category.name }
-        : mockCategories.find((cat) => cat.id === current.category_id) ?? mockCategories[0]
+        : categoryStore.find((cat) => cat.id === current.category_id) ?? categoryStore[0]
 
       const matchedCategory =
         (data.category_id !== undefined
-          ? mockCategories.find((cat) => cat.id === data.category_id)
+          ? categoryStore.find((cat) => cat.id === data.category_id)
           : null) ?? fallbackCategory
 
       const updated: SuratMasuk = {
@@ -331,7 +387,9 @@ export const localApi = {
         updated_at: new Date().toISOString(),
       }
 
-      if (Object.prototype.hasOwnProperty.call(data, 'keterangan')) {
+      if (Object.prototype.hasOwnProperty.call(data, 'desc_disposition')) {
+        updated.desc_disposition = data.desc_disposition ?? null
+      } else if (Object.prototype.hasOwnProperty.call(data, 'keterangan')) {
         updated.desc_disposition = data.keterangan ?? current.desc_disposition ?? null
       }
 
@@ -361,7 +419,7 @@ export const localApi = {
     },
 
     async create(data: SuratKeluarCreate): Promise<SuratKeluar> {
-      const category = mockCategories.find((cat) => cat.id === data.category_id)
+      const category = categoryStore.find((cat) => cat.id === data.category_id)
       if (!category) {
         throw new Error('Kategori tidak ditemukan')
       }
@@ -396,11 +454,11 @@ export const localApi = {
       const current = suratKeluarStore[index]
       const fallbackCategory = current.category
         ? { id: current.category.id, name: current.category.name }
-        : mockCategories.find((cat) => cat.id === current.category_id) ?? mockCategories[0]
+        : categoryStore.find((cat) => cat.id === current.category_id) ?? categoryStore[0]
 
       const matchedCategory =
         (data.category_id !== undefined
-          ? mockCategories.find((cat) => cat.id === data.category_id)
+          ? categoryStore.find((cat) => cat.id === data.category_id)
           : null) ?? fallbackCategory
 
       const updated: SuratKeluar = {

@@ -133,6 +133,20 @@ export const categoriesService = {
     const raw = await apiClient.get(`${apiPrefix}/categories`)
     return parseApiResponse(categorySchema.array(), raw)
   },
+
+  async create(data: { name: string; desc?: string }): Promise<Category> {
+    if (useLocalMocks) {
+      return localApi.categories.create(data)
+    }
+
+    const payload = {
+      name: data.name,
+      desc: data.desc,
+    }
+
+    const raw = await apiClient.post(`${apiPrefix}/categories`, payload)
+    return parseApiResponse(categorySchema, raw)
+  },
 }
 
 // Surat Masuk services

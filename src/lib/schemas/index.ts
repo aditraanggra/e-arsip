@@ -76,7 +76,7 @@ export const suratMasukSchema = z.object({
   category: categorySummarySchema.nullable().optional(),
   district: z.string().nullable().optional(),
   village: z.string().nullable().optional(),
-  no_agenda: z.string().nullable().optional(),
+  no_agenda: z.union([z.string(), z.number()]).nullable().optional(),
   contact: z.string().nullable().optional(),
   address: z.string().nullable().optional(),
   dept_disposition: z.string().nullable().optional(),
@@ -94,6 +94,13 @@ export const suratMasukCreateSchema = z.object({
   keterangan: z.string().optional(),
   file_path: z.string().optional(),
   category_id: z.number(),
+  no_agenda: z.string().optional(),
+  district: z.string().optional(),
+  village: z.string().optional(),
+  contact: z.string().optional(),
+  address: z.string().optional(),
+  dept_disposition: z.string().optional(),
+  desc_disposition: z.string().optional(),
 }).strict()
 
 // Surat Keluar schema
