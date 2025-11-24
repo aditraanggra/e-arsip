@@ -342,7 +342,7 @@ class ApiClient {
   async download(endpoint: string, data: Record<string, unknown>) {
     const url = `${this.baseURL}${endpoint}`
     const headers = this.buildHeaders()
-    headers.set('Accept', 'application/octet-stream')
+    headers.set('Accept', 'application/pdf, application/octet-stream')
     headers.delete('Content-Type')
 
     const response = await this.fetchWithTimeout(url, {

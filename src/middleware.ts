@@ -6,8 +6,7 @@ const protectedRoutes = [
   '/dashboard',
   '/surat-masuk',
   '/surat-keluar',
-  '/reports',
-  '/imports',
+  '/laporan',
 ]
 
 // Routes that should redirect to dashboard if authenticated

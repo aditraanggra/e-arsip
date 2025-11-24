@@ -498,8 +498,10 @@ export const localApi = {
     },
 
     async exportReport(): Promise<Blob> {
-      const content = 'Laporan E-Arsip (dummy) - silakan gunakan data produksi untuk arsip resmi.'
-      return new Blob([content], { type: 'text/plain' })
+      const pdfBase64 =
+        'JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9Db3VudCAxIC9LaWRzIFszIDAgUl0gPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0NCA+PgpzdHJlYW0KQlQKL0YxIDI0IFRmIDcyIDcyMCBUZCAoRS1BcnNpcCBSZXBvcnQpIFRqIEVUCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9iago8PCAvVHlwZSAvRm9udCAvU3VidHlwZSAvVHlwZTEgL05hbWUgL0YxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAxMDEgMDAwMDAgbiAKMDAwMDAwMDYwMSAwMDAwMCBuIAowMDAwMDAxMjAxIDAwMDAwIG4gCjAwMDAwMDIzMDEgMDAwMDAgbiAKMDAwMDAwMjkzMCAwMDAwMCBuIAp0cmFpbGVyCjw8IC9Sb290IDEgMCBSIC9TaXplIDYgPj4Kc3RhcnR4cmVmCjM5NQolJUVPRg=='
+      const pdfBytes = Buffer.from(pdfBase64, 'base64')
+      return new Blob([pdfBytes], { type: 'application/pdf' })
     },
   },
 }

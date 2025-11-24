@@ -6,12 +6,26 @@ import {
   allMockSuratKeluar,
   mockDashboardMetrics,
 } from '../data'
+import { Buffer } from 'buffer'
 import type { SuratMasuk, SuratKeluar, SuratMasukCreate, SuratKeluarCreate } from '@/lib/schemas'
 import { relativeAuthHandlers } from './auth-relative'
 
 type DocumentSearchResult =
   | (SuratMasuk & { document_type: 'incoming' })
   | (SuratKeluar & { document_type: 'outgoing' })
+
+function decodeBase64ToBytes(input: string) {
+  if (typeof atob === 'function') {
+    const binary = atob(input)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return bytes
+  }
+
+  return new Uint8Array(Buffer.from(input, 'base64'))
+}
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.domain.tld/api/v1'
 const MOCK_LATENCY = 300
@@ -86,6 +100,40 @@ function filterSuratMasuk(data: SuratMasuk[], params: URLSearchParams) {
   }
   
   return filtered
+}
+
+function parseAgendaNumber(value: string | number | null | undefined) {
+  if (value === null || value === undefined) return Number.NEGATIVE_INFINITY
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+
+  const digits = value.toString().replace(/\D+/g, '')
+  if (!digits) return Number.NEGATIVE_INFINITY
+
+  const parsed = Number(digits)
+  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY
+}
+
+function sortSuratMasuk(data: SuratMasuk[], sort?: string) {
+  const sortValue = sort || '-no_agenda'
+  const direction = sortValue.startsWith('-') ? 'desc' : 'asc'
+  const field = sortValue.replace(/^-/, '')
+
+  const compare = (a: SuratMasuk, b: SuratMasuk) => {
+    if (field === 'no_agenda') {
+      const diff = parseAgendaNumber(b.no_agenda) - parseAgendaNumber(a.no_agenda)
+      return direction === 'desc' ? diff : -diff
+    }
+
+    if (field === 'tanggal') {
+      const diff =
+        new Date(b.tanggal ?? 0).getTime() - new Date(a.tanggal ?? 0).getTime()
+      return direction === 'desc' ? diff : -diff
+    }
+
+    return 0
+  }
+
+  return [...data].sort(compare)
 }
 
 function filterSuratKeluar(data: SuratKeluar[], params: URLSearchParams) {
@@ -305,10 +353,11 @@ export const handlers = [
     const params = url.searchParams
     
     const filtered = filterSuratMasuk(allMockSuratMasuk, params)
-    const page = parseInt(params.get('page') || '1')
-    const perPage = parseInt(params.get('per_page') || '20')
+    const sorted = sortSuratMasuk(filtered, params.get('sort') ?? undefined)
+    const page = parseInt(params.get('page') || '1', 10)
+    const perPage = parseInt(params.get('per_page') || '20', 10)
     
-    return HttpResponse.json(paginate(filtered, page, perPage))
+    return HttpResponse.json(paginate(sorted, page, perPage))
   }),
 
   http.get('/surat-masuk', async ({ request }) => {
@@ -318,10 +367,11 @@ export const handlers = [
     const params = url.searchParams
     
     const filtered = filterSuratMasuk(allMockSuratMasuk, params)
-    const page = parseInt(params.get('page') || '1')
-    const perPage = parseInt(params.get('per_page') || '20')
+    const sorted = sortSuratMasuk(filtered, params.get('sort') ?? undefined)
+    const page = parseInt(params.get('page') || '1', 10)
+    const perPage = parseInt(params.get('per_page') || '20', 10)
     
-    return HttpResponse.json(paginate(filtered, page, perPage))
+    return HttpResponse.json(paginate(sorted, page, perPage))
   }),
 
   http.get('/api/surat-masuk', async ({ request }) => {
@@ -331,10 +381,11 @@ export const handlers = [
     const params = url.searchParams
     
     const filtered = filterSuratMasuk(allMockSuratMasuk, params)
-    const page = parseInt(params.get('page') || '1')
-    const perPage = parseInt(params.get('per_page') || '20')
+    const sorted = sortSuratMasuk(filtered, params.get('sort') ?? undefined)
+    const page = parseInt(params.get('page') || '1', 10)
+    const perPage = parseInt(params.get('per_page') || '20', 10)
     
-    return HttpResponse.json(paginate(filtered, page, perPage))
+    return HttpResponse.json(paginate(sorted, page, perPage))
   }),
 
   http.get(`${API_BASE_URL}/surat-masuk/:id`, async ({ params }) => {
@@ -1068,46 +1119,43 @@ export const handlers = [
     await delay(MOCK_LATENCY)
     
     // Return a mock PDF blob
-    const pdfContent = 'Mock PDF content for export'
-    return HttpResponse.arrayBuffer(
-      new TextEncoder().encode(pdfContent).buffer,
-      {
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': 'attachment; filename="report.pdf"',
-        },
-      }
-    )
+    const pdfBase64 =
+      'JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9Db3VudCAxIC9LaWRzIFszIDAgUl0gPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0NCA+PgpzdHJlYW0KQlQKL0YxIDI0IFRmIDcyIDcyMCBUZCAoRS1BcnNpcCBSZXBvcnQpIFRqIEVUCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9iago8PCAvVHlwZSAvRm9udCAvU3VidHlwZSAvVHlwZTEgL05hbWUgL0YxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAxMDEgMDAwMDAgbiAKMDAwMDAwMDYwMSAwMDAwMCBuIAowMDAwMDAxMjAxIDAwMDAwIG4gCjAwMDAwMDIzMDEgMDAwMDAgbiAKMDAwMDAwMjkzMCAwMDAwMCBuIAp0cmFpbGVyCjw8IC9Sb290IDEgMCBSIC9TaXplIDYgPj4Kc3RhcnR4cmVmCjM5NQolJUVPRg=='
+    const pdfBytes = decodeBase64ToBytes(pdfBase64)
+    return HttpResponse.arrayBuffer(pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength), {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename=\"report.pdf\"',
+      },
+    })
   }),
 
   http.post('/reports/export', async () => {
     await delay(MOCK_LATENCY)
     
-    const pdfContent = 'Mock PDF content for export'
-    return HttpResponse.arrayBuffer(
-      new TextEncoder().encode(pdfContent).buffer,
-      {
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': 'attachment; filename="report.pdf"',
-        },
-      }
-    )
+    const pdfBase64 =
+      'JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9Db3VudCAxIC9LaWRzIFszIDAgUl0gPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0NCA+PgpzdHJlYW0KQlQKL0YxIDI0IFRmIDcyIDcyMCBUZCAoRS1BcnNpcCBSZXBvcnQpIFRqIEVUCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9iago8PCAvVHlwZSAvRm9udCAvU3VidHlwZSAvVHlwZTEgL05hbWUgL0YxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAxMDEgMDAwMDAgbiAKMDAwMDAwMDYwMSAwMDAwMCBuIAowMDAwMDAxMjAxIDAwMDAwIG4gCjAwMDAwMDIzMDEgMDAwMDAgbiAKMDAwMDAwMjkzMCAwMDAwMCBuIAp0cmFpbGVyCjw8IC9Sb290IDEgMCBSIC9TaXplIDYgPj4Kc3RhcnR4cmVmCjM5NQolJUVPRg=='
+    const pdfBytes = decodeBase64ToBytes(pdfBase64)
+    return HttpResponse.arrayBuffer(pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength), {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename=\"report.pdf\"',
+      },
+    })
   }),
 
   http.post('/api/reports/export', async () => {
     await delay(MOCK_LATENCY)
     
-    const pdfContent = 'Mock PDF content for export'
-    return HttpResponse.arrayBuffer(
-      new TextEncoder().encode(pdfContent).buffer,
-      {
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': 'attachment; filename="report.pdf"',
-        },
-      }
-    )
+    const pdfBase64 =
+      'JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9Db3VudCAxIC9LaWRzIFszIDAgUl0gPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0NCA+PgpzdHJlYW0KQlQKL0YxIDI0IFRmIDcyIDcyMCBUZCAoRS1BcnNpcCBSZXBvcnQpIFRqIEVUCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9iago8PCAvVHlwZSAvRm9udCAvU3VidHlwZSAvVHlwZTEgL05hbWUgL0YxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAxMDEgMDAwMDAgbiAKMDAwMDAwMDYwMSAwMDAwMCBuIAowMDAwMDAxMjAxIDAwMDAwIG4gCjAwMDAwMDIzMDEgMDAwMDAgbiAKMDAwMDAwMjkzMCAwMDAwMCBuIAp0cmFpbGVyCjw8IC9Sb290IDEgMCBSIC9TaXplIDYgPj4Kc3RhcnR4cmVmCjM5NQolJUVPRg=='
+    const pdfBytes = decodeBase64ToBytes(pdfBase64)
+    return HttpResponse.arrayBuffer(pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength), {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename=\"report.pdf\"',
+      },
+    })
   }),
 
   // Document search endpoint

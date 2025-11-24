@@ -21,7 +21,6 @@ import {
   Mail,
   Send,
   BarChart3,
-  Upload,
   LogOut,
   FileText,
 } from 'lucide-react'
@@ -44,13 +43,8 @@ const menuItems = [
   },
   {
     title: 'Laporan',
-    url: '/reports',
+    url: '/laporan',
     icon: BarChart3,
-  },
-  {
-    title: 'Impor Data',
-    url: '/imports',
-    icon: Upload,
   },
 ]
 
