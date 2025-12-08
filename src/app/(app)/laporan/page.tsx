@@ -13,12 +13,8 @@ import {
   YAxis,
 } from 'recharts'
 import { reportsService } from '@/lib/api/services'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { generateReportPDF, formatPeriodLabel } from '@/lib/utils/pdf-generator'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -72,9 +68,7 @@ export default function LaporanPage() {
   })
 
   const years = useMemo(() => {
-    return Array.from({ length: 6 }, (_, index) =>
-      String(CURRENT_YEAR - index)
-    )
+    return Array.from({ length: 6 }, (_, index) => String(CURRENT_YEAR - index))
   }, [])
 
   const apiParams = useMemo(() => {
@@ -112,11 +106,50 @@ export default function LaporanPage() {
   const handleExport = async () => {
     try {
       setIsExporting(true)
-      const blob = await reportsService.exportReport(apiParams)
+
+      // Generate PDF di client-side dengan data yang sudah ada
+      const periodLabel = formatPeriodLabel(
+        filters.period,
+        filters.month,
+        filters.year
+      )
+      const entityLabel =
+        filters.entity === 'all'
+          ? 'Semua Surat'
+          : filters.entity === 'incoming'
+          ? 'Surat Masuk'
+          : 'Surat Keluar'
+
+      const blob = generateReportPDF({
+        title: `Laporan ${entityLabel}`,
+        period: periodLabel,
+        generatedAt: new Date().toLocaleDateString('id-ID', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        summary: report?.summary || 'Tidak ada ringkasan tersedia.',
+        totalSuratMasuk: totalIncoming,
+        totalSuratKeluar: totalOutgoing,
+        chartData: chartData,
+        filters: {
+          entity: filters.entity,
+          periodType: filters.period,
+          month: filters.month,
+          year: filters.year,
+        },
+      })
+
       const fileURL = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = fileURL
-      link.download = 'laporan-e-arsip.pdf'
+      const fileName = `laporan-${filters.entity}-${filters.year}${
+        filters.period === 'monthly' ? '-' + filters.month : ''
+      }.pdf`
+      link.download = fileName
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -132,39 +165,39 @@ export default function LaporanPage() {
   }
 
   return (
-    <div className="w-full min-w-0 space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className='w-full min-w-0 space-y-6'>
+      <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Laporan</h1>
-          <p className="text-muted-foreground">
+          <h1 className='text-3xl font-bold tracking-tight'>Laporan</h1>
+          <p className='text-muted-foreground'>
             Ringkasan performa surat masuk dan surat keluar
           </p>
         </div>
         <Button onClick={handleExport} disabled={isExporting}>
-          <Download className="mr-2 h-4 w-4" />
+          <Download className='mr-2 h-4 w-4' />
           {isExporting ? 'Mengunduh...' : 'Unduh Laporan'}
         </Button>
       </div>
 
       <Card>
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Filter className="h-4 w-4" />
+        <CardHeader className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+          <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+            <Filter className='h-4 w-4' />
             <span>Filter laporan</span>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className='flex flex-col gap-3 sm:flex-row'>
             <Select
               value={filters.period}
               onValueChange={(value: ReportFilters['period']) =>
                 setFilters((prev) => ({ ...prev, period: value }))
               }
             >
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Periode" />
+              <SelectTrigger className='w-full sm:w-40'>
+                <SelectValue placeholder='Periode' />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="monthly">Bulanan</SelectItem>
-                <SelectItem value="yearly">Tahunan</SelectItem>
+                <SelectItem value='monthly'>Bulanan</SelectItem>
+                <SelectItem value='yearly'>Tahunan</SelectItem>
               </SelectContent>
             </Select>
 
@@ -175,8 +208,8 @@ export default function LaporanPage() {
                   setFilters((prev) => ({ ...prev, month: value }))
                 }
               >
-                <SelectTrigger className="w-full sm:w-40">
-                  <SelectValue placeholder="Pilih bulan" />
+                <SelectTrigger className='w-full sm:w-40'>
+                  <SelectValue placeholder='Pilih bulan' />
                 </SelectTrigger>
                 <SelectContent>
                   {MONTHS.map((month) => (
@@ -194,8 +227,8 @@ export default function LaporanPage() {
                 setFilters((prev) => ({ ...prev, year: value }))
               }
             >
-              <SelectTrigger className="w-full sm:w-32">
-                <SelectValue placeholder="Pilih tahun" />
+              <SelectTrigger className='w-full sm:w-32'>
+                <SelectValue placeholder='Pilih tahun' />
               </SelectTrigger>
               <SelectContent>
                 {years.map((year) => (
@@ -212,8 +245,8 @@ export default function LaporanPage() {
                 setFilters((prev) => ({ ...prev, entity: value }))
               }
             >
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="Jenis surat" />
+              <SelectTrigger className='w-full sm:w-44'>
+                <SelectValue placeholder='Jenis surat' />
               </SelectTrigger>
               <SelectContent>
                 {ENTITY_OPTIONS.map((option) => (
@@ -227,16 +260,16 @@ export default function LaporanPage() {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className='grid gap-4 md:grid-cols-2'>
         <Card>
           <CardHeader>
             <CardTitle>Total Surat Masuk</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <Skeleton className="h-10 w-24" />
+              <Skeleton className='h-10 w-24' />
             ) : (
-              <p className="text-3xl font-bold">{totalIncoming}</p>
+              <p className='text-3xl font-bold'>{totalIncoming}</p>
             )}
           </CardContent>
         </Card>
@@ -247,9 +280,9 @@ export default function LaporanPage() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <Skeleton className="h-10 w-24" />
+              <Skeleton className='h-10 w-24' />
             ) : (
-              <p className="text-3xl font-bold">{totalOutgoing}</p>
+              <p className='text-3xl font-bold'>{totalOutgoing}</p>
             )}
           </CardContent>
         </Card>
@@ -259,19 +292,23 @@ export default function LaporanPage() {
         <CardHeader>
           <CardTitle>Tren Surat</CardTitle>
         </CardHeader>
-        <CardContent className="h-80">
+        <CardContent className='h-80'>
           {isLoading ? (
-            <Skeleton className="h-full w-full" />
+            <Skeleton className='h-full w-full' />
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width='100%' height='100%'>
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
+                <CartesianGrid strokeDasharray='3 3' />
+                <XAxis dataKey='date' />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="surat_masuk" name="Surat Masuk" fill="#3182CE" />
-                <Bar dataKey="surat_keluar" name="Surat Keluar" fill="#38A169" />
+                <Bar dataKey='surat_masuk' name='Surat Masuk' fill='#3182CE' />
+                <Bar
+                  dataKey='surat_keluar'
+                  name='Surat Keluar'
+                  fill='#38A169'
+                />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -284,12 +321,12 @@ export default function LaporanPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
+            <div className='space-y-2'>
+              <Skeleton className='h-4 w-full' />
+              <Skeleton className='h-4 w-3/4' />
             </div>
           ) : (
-            <p className="text-muted-foreground leading-relaxed">
+            <p className='text-muted-foreground leading-relaxed'>
               {report?.summary ??
                 'Ringkasan laporan tidak tersedia untuk filter yang dipilih.'}
             </p>

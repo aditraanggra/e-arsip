@@ -189,7 +189,8 @@ export const suratMasukService = {
     if (date_to) searchParams.set('date_to', date_to)
     if (district) searchParams.set('district', district)
     if (village) searchParams.set('village', village)
-    if (sort) searchParams.set('sort', sort)
+    // Note: sort parameter dihapus karena backend tidak mendukung
+    // Sorting dilakukan di client-side pada halaman surat-masuk
     if (page) searchParams.set('page', String(page))
     if (per_page) searchParams.set('per_page', String(per_page))
 

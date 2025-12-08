@@ -127,13 +127,24 @@ function filterSuratMasuk(items: SuratMasuk[], params: SuratMasukQuery) {
   return filtered
 }
 
-function parseAgendaNumber(value: string | number | null | undefined) {
-  if (value === null || value === undefined) return Number.NEGATIVE_INFINITY
-  if (typeof value === 'number' && Number.isFinite(value)) return value
-  const digits = value.toString().replace(/\D+/g, '')
-  if (!digits) return Number.NEGATIVE_INFINITY
-  const parsed = Number(digits)
-  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY
+// Parse no_agenda untuk sorting - mendukung format seperti "4521", "4521.A", "4521.B"
+function parseAgendaForSort(value: string | number | null | undefined): { num: number; suffix: string } {
+  if (value === null || value === undefined) {
+    return { num: Number.NEGATIVE_INFINITY, suffix: '' }
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return { num: value, suffix: '' }
+  }
+
+  const str = String(value)
+  // Extract numeric part dan suffix (misal: "4521.A" -> num: 4521, suffix: ".A")
+  const match = str.match(/^(\d+)(.*)$/)
+  if (match) {
+    return { num: parseInt(match[1], 10), suffix: match[2] || '' }
+  }
+
+  // Jika tidak ada angka di awal, gunakan string comparison
+  return { num: Number.NEGATIVE_INFINITY, suffix: str }
 }
 
 function sortSuratMasuk(items: SuratMasuk[], sort?: string) {
@@ -144,8 +155,18 @@ function sortSuratMasuk(items: SuratMasuk[], sort?: string) {
 
   const compare = (a: SuratMasuk, b: SuratMasuk) => {
     if (field === 'no_agenda') {
-      const diff = parseAgendaNumber(b.no_agenda) - parseAgendaNumber(a.no_agenda)
-      return direction === 'desc' ? diff : -diff
+      const agendaA = parseAgendaForSort(a.no_agenda)
+      const agendaB = parseAgendaForSort(b.no_agenda)
+
+      // Sort by numeric part first
+      if (agendaB.num !== agendaA.num) {
+        const diff = agendaB.num - agendaA.num
+        return direction === 'desc' ? diff : -diff
+      }
+
+      // If numeric part is same, sort by suffix
+      const suffixDiff = agendaB.suffix.localeCompare(agendaA.suffix)
+      return direction === 'desc' ? suffixDiff : -suffixDiff
     }
 
     if (field === 'tanggal') {
