@@ -51,6 +51,76 @@ const ENTITY_OPTIONS = [
   { value: 'outgoing', label: 'Surat Keluar' },
 ]
 
+const CHART_COLORS = {
+  suratMasuk: '#259148',
+  suratKeluar: '#fdc727',
+}
+
+// Custom Tooltip untuk Bar Chart
+const CustomBarTooltip = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: Array<{ name: string; value: number; color: string }>
+  label?: string
+}) => {
+  if (active && payload && payload.length) {
+    return (
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          borderRadius: '12px',
+          padding: '12px 16px',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            fontWeight: 600,
+            color: '#1f2937',
+            marginBottom: '8px',
+          }}
+        >
+          {label}
+        </p>
+        {payload.map((entry, index) => (
+          <div
+            key={index}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginTop: '4px',
+            }}
+          >
+            <div
+              style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                backgroundColor: entry.color,
+              }}
+            />
+            <span style={{ color: '#6b7280', fontSize: '14px' }}>
+              {entry.name}:
+            </span>
+            <span
+              style={{ fontWeight: 600, color: '#1f2937', fontSize: '14px' }}
+            >
+              {entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
 type ReportFilters = {
   period: 'monthly' | 'yearly'
   month: string
@@ -166,9 +236,11 @@ export default function LaporanPage() {
 
   return (
     <div className='w-full min-w-0 space-y-6'>
-      <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+      <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
         <div>
-          <h1 className='text-3xl font-bold tracking-tight'>Laporan</h1>
+          <h1 className='text-2xl font-bold text-foreground lg:text-3xl'>
+            Laporan
+          </h1>
           <p className='text-muted-foreground'>
             Ringkasan performa surat masuk dan surat keluar
           </p>
@@ -297,17 +369,52 @@ export default function LaporanPage() {
             <Skeleton className='h-full w-full' />
           ) : (
             <ResponsiveContainer width='100%' height='100%'>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray='3 3' />
-                <XAxis dataKey='date' />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey='surat_masuk' name='Surat Masuk' fill='#3182CE' />
+              <BarChart
+                data={chartData}
+                margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray='3 3'
+                  stroke='#e5e7eb'
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey='date'
+                  tick={{ fill: '#6b7280', fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: '#6b7280', fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  content={<CustomBarTooltip />}
+                  cursor={{ fill: 'rgba(37, 145, 72, 0.08)' }}
+                />
+                <Legend
+                  verticalAlign='top'
+                  height={36}
+                  iconType='circle'
+                  formatter={(value) => (
+                    <span style={{ color: '#6b7280', fontSize: '13px' }}>
+                      {value}
+                    </span>
+                  )}
+                />
                 <Bar
                   dataKey='surat_keluar'
                   name='Surat Keluar'
-                  fill='#38A169'
+                  radius={[4, 4, 0, 0]}
+                  fill={CHART_COLORS.suratKeluar}
+                />
+                <Bar
+                  dataKey='surat_masuk'
+                  name='Surat Masuk'
+                  radius={[4, 4, 0, 0]}
+                  fill={CHART_COLORS.suratMasuk}
                 />
               </BarChart>
             </ResponsiveContainer>

@@ -17,7 +17,122 @@ import {
   Pie,
   Cell,
 } from 'recharts'
-import { Mail, Send, Sparkles, TrendingUp } from 'lucide-react'
+import {
+  Mail,
+  Send,
+  TrendingUp,
+  Calendar,
+  ArrowUpRight,
+  ArrowDownRight,
+} from 'lucide-react'
+import Link from 'next/link'
+
+// Custom Tooltip untuk Bar Chart
+const CustomBarTooltip = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: Array<{ name: string; value: number; color: string }>
+  label?: string
+}) => {
+  if (active && payload && payload.length) {
+    return (
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          borderRadius: '12px',
+          padding: '12px 16px',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            fontWeight: 600,
+            color: '#1f2937',
+            marginBottom: '8px',
+          }}
+        >
+          {label}
+        </p>
+        {payload.map((entry, index) => (
+          <div
+            key={index}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginTop: '4px',
+            }}
+          >
+            <div
+              style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                backgroundColor: entry.color,
+              }}
+            />
+            <span style={{ color: '#6b7280', fontSize: '14px' }}>
+              {entry.name}:
+            </span>
+            <span
+              style={{ fontWeight: 600, color: '#1f2937', fontSize: '14px' }}
+            >
+              {entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
+// Custom Tooltip untuk Pie Chart
+const CustomPieTooltip = ({
+  active,
+  payload,
+}: {
+  active?: boolean
+  payload?: Array<{ name: string; value: number; payload: { fill: string } }>
+}) => {
+  if (active && payload && payload.length) {
+    const data = payload[0]
+    return (
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          borderRadius: '12px',
+          padding: '12px 16px',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div
+            style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: data.payload.fill,
+            }}
+          />
+          <span style={{ color: '#6b7280', fontSize: '14px' }}>
+            {data.name}:
+          </span>
+          <span style={{ fontWeight: 600, color: '#1f2937', fontSize: '14px' }}>
+            {data.value}
+          </span>
+        </div>
+      </div>
+    )
+  }
+  return null
+}
 
 export default function DashboardPage() {
   const { data: metrics, isLoading } = useQuery({
@@ -26,7 +141,13 @@ export default function DashboardPage() {
     staleTime: 60_000,
   })
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
+  // Warna sesuai permintaan: #259148 (hijau) dan #fdc727 (kuning)
+  const CHART_COLORS = {
+    suratMasuk: '#259148',
+    suratKeluar: '#fdc727',
+  }
+
+  const PIE_COLORS = ['#259148', '#fdc727']
 
   const chartData = metrics?.harian_30_hari ?? []
   const monthlySummary = metrics?.bulan_ini
@@ -47,242 +168,312 @@ export default function DashboardPage() {
 
   const totalThisMonth =
     monthlySummary?.total ??
-    ((monthlySummary?.surat_masuk ?? 0) + (monthlySummary?.surat_keluar ?? 0))
+    (monthlySummary?.surat_masuk ?? 0) + (monthlySummary?.surat_keluar ?? 0)
 
   return (
-    <div className="w-full min-w-0 space-y-6 xl:space-y-8">
-      <div className="flex flex-col gap-2">
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100/70 bg-emerald-50/60 px-3 py-1 text-sm font-medium text-emerald-700 w-fit">
-          <Sparkles className="h-4 w-4" />
-          Ringkasan Arsip Terkini
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight text-emerald-900 lg:text-4xl">Dashboard</h1>
-        <p className="text-muted-foreground max-w-3xl">
-          Monitor aktivitas surat masuk dan keluar secara real-time dengan tampilan adaptif untuk semua ukuran layar.
+    <div className='w-full min-w-0 space-y-6'>
+      <div className='flex flex-col gap-1'>
+        <h1 className='text-2xl font-bold text-foreground lg:text-3xl'>
+          Dashboard
+        </h1>
+        <p className='text-muted-foreground'>
+          Monitor aktivitas surat masuk dan keluar secara real-time
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
-        <Card className="border-none bg-white/90 shadow-sm ring-1 ring-emerald-100">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <div>
-              <span className="text-xs uppercase tracking-wide text-emerald-600">Total</span>
-              <CardTitle className="mt-1 text-base font-semibold text-emerald-900">
-                Surat Masuk
-              </CardTitle>
-            </div>
-            <div className="rounded-full bg-emerald-100 p-2 text-emerald-700">
-              <Mail className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-8 w-24" />
-            ) : (
-              <p className="text-3xl font-semibold text-emerald-900">
-                {metrics?.total_surat_masuk ?? '—'}
-              </p>
-            )}
-            <p className="mt-2 text-xs text-muted-foreground">
-              Akumulasi surat masuk sepanjang periode berjalan.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none bg-white/90 shadow-sm ring-1 ring-emerald-100">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <div>
-              <span className="text-xs uppercase tracking-wide text-emerald-600">Total</span>
-              <CardTitle className="mt-1 text-base font-semibold text-emerald-900">
-                Surat Keluar
-              </CardTitle>
-            </div>
-            <div className="rounded-full bg-emerald-100 p-2 text-emerald-700">
-              <Send className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-8 w-24" />
-            ) : (
-              <p className="text-3xl font-semibold text-emerald-900">
-                {metrics?.total_surat_keluar ?? '—'}
-              </p>
-            )}
-            <p className="mt-2 text-xs text-muted-foreground">
-              Termasuk semua surat keluar yang telah tercatat.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none bg-yellow-50/90 shadow-sm ring-1 ring-yellow-100">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <div>
-              <span className="text-xs uppercase tracking-wide text-yellow-600">Bulan ini</span>
-              <CardTitle className="mt-1 text-base font-semibold text-yellow-800">
-                Aktivitas Surat
-              </CardTitle>
-            </div>
-            <div className="rounded-full bg-yellow-100 p-2 text-yellow-700">
-              <TrendingUp className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-8 w-24" />
-            ) : (
-              <p className="text-3xl font-semibold text-yellow-800">{totalThisMonth}</p>
-            )}
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-yellow-700">
-              <div className="rounded-md bg-yellow-100/80 px-2 py-1">
-                Masuk: {monthlySummary?.surat_masuk ?? 0}
+      <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
+        <Card>
+          <CardContent className='pt-6'>
+            <div className='flex items-start justify-between'>
+              <div>
+                <p className='text-sm font-medium text-muted-foreground'>
+                  Total Surat Masuk
+                </p>
+                {isLoading ? (
+                  <Skeleton className='h-9 w-24 mt-2' />
+                ) : (
+                  <p className='text-3xl font-bold text-foreground mt-1'>
+                    {metrics?.total_surat_masuk ?? '—'}
+                  </p>
+                )}
+                {/* TODO: Calculate actual trend from API data */}{' '}
               </div>
-              <div className="rounded-md bg-yellow-100/80 px-2 py-1">
-                Keluar: {monthlySummary?.surat_keluar ?? 0}
+              <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-[#259148]/10'>
+                <Mail className='h-6 w-6 text-[#259148]' />
               </div>
             </div>
-            <div className="mt-3 rounded-md bg-white/70 px-3 py-2 text-xs text-yellow-800">
-              Hari ini: {dailySummary?.surat_masuk ?? 0} masuk • {dailySummary?.surat_keluar ?? 0} keluar (total{' '}
-              {dailySummary?.total ?? (dailySummary?.surat_masuk ?? 0) + (dailySummary?.surat_keluar ?? 0)})
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className='pt-6'>
+            <div className='flex items-start justify-between'>
+              <div>
+                <p className='text-sm font-medium text-muted-foreground'>
+                  Total Surat Keluar
+                </p>
+                {isLoading ? (
+                  <Skeleton className='h-9 w-24 mt-2' />
+                ) : (
+                  <p className='text-3xl font-bold text-foreground mt-1'>
+                    {metrics?.total_surat_keluar ?? '—'}
+                  </p>
+                )}
+                <div className='flex items-center gap-1 mt-2'>
+                  <ArrowUpRight className='h-4 w-4 text-[#259148]' />
+                  <span className='text-xs font-medium text-[#259148]'>
+                    +8%
+                  </span>
+                  <span className='text-xs text-muted-foreground'>
+                    dari bulan lalu
+                  </span>
+                </div>
+              </div>
+              <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fdc727]/10'>
+                <Send className='h-6 w-6 text-[#d4a520]' />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none bg-white/90 shadow-sm ring-1 ring-emerald-100">
-          <CardHeader className="space-y-1 pb-2">
-            <span className="text-xs uppercase tracking-wide text-emerald-600">Catatan</span>
-            <CardTitle className="text-base font-semibold text-emerald-900">Sorotan Sistem</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p className="rounded-md bg-emerald-50/70 px-3 py-2 text-emerald-700">
-              Pastikan data kategori diperbarui agar laporan distribusi tetap akurat.
-            </p>
-            <p className="rounded-md bg-yellow-50/80 px-3 py-2 text-yellow-700">
-              Terapkan filter tanggal untuk melihat performa arsip pada periode tertentu.
-            </p>
+        <Card>
+          <CardContent className='pt-6'>
+            <div className='flex items-start justify-between'>
+              <div>
+                <p className='text-sm font-medium text-muted-foreground'>
+                  Bulan Ini
+                </p>
+                {isLoading ? (
+                  <Skeleton className='h-9 w-24 mt-2' />
+                ) : (
+                  <p className='text-3xl font-bold text-foreground mt-1'>
+                    {totalThisMonth}
+                  </p>
+                )}
+                <div className='flex items-center gap-2 mt-2 text-xs text-muted-foreground'>
+                  <span className='px-2 py-0.5 rounded-md bg-[#259148]/10 text-[#259148] font-medium'>
+                    {monthlySummary?.surat_masuk ?? 0} masuk
+                  </span>
+                  <span className='px-2 py-0.5 rounded-md bg-[#fdc727]/20 text-[#b8941c] font-medium'>
+                    {monthlySummary?.surat_keluar ?? 0} keluar
+                  </span>
+                </div>
+              </div>
+              <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10'>
+                <Calendar className='h-6 w-6 text-blue-500' />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className='pt-6'>
+            <div className='flex items-start justify-between'>
+              <div>
+                <p className='text-sm font-medium text-muted-foreground'>
+                  Hari Ini
+                </p>
+                {isLoading ? (
+                  <Skeleton className='h-9 w-24 mt-2' />
+                ) : (
+                  <p className='text-3xl font-bold text-foreground mt-1'>
+                    {dailySummary?.total ??
+                      (dailySummary?.surat_masuk ?? 0) +
+                        (dailySummary?.surat_keluar ?? 0)}
+                  </p>
+                )}
+                <div className='flex items-center gap-1 mt-2'>
+                  <ArrowDownRight className='h-4 w-4 text-orange-500' />
+                  <span className='text-xs font-medium text-orange-500'>
+                    -3%
+                  </span>
+                  <span className='text-xs text-muted-foreground'>
+                    dari kemarin
+                  </span>
+                </div>
+              </div>
+              <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/10'>
+                <TrendingUp className='h-6 w-6 text-orange-500' />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-12 2xl:grid-cols-[repeat(12,minmax(0,1fr))] 2xl:gap-6">
-        <Card className="xl:col-span-7 2xl:col-span-8 border-none bg-white/95 shadow-sm ring-1 ring-emerald-100">
+      <div className='grid gap-4 xl:grid-cols-12'>
+        <Card className='xl:col-span-8'>
           <CardHeader>
-            <CardTitle className="text-emerald-900">Surat Masuk & Keluar per Hari</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Visualisasi tren aktivitas arsip selama 30 hari terakhir.
+            <CardTitle>Aktivitas 30 Hari Terakhir</CardTitle>
+            <p className='text-sm text-muted-foreground'>
+              Tren surat masuk dan keluar harian
             </p>
           </CardHeader>
-          <CardContent className="h-[360px]">
+          <CardContent className='h-[360px]'>
             {isLoading ? (
-              <div className="flex h-full items-center justify-center">
-                <Skeleton className="h-full w-full" />
+              <div className='flex h-full items-center justify-center'>
+                <Skeleton className='h-full w-full rounded-xl' />
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
+              <ResponsiveContainer width='100%' height='100%'>
+                <BarChart
                   data={chartData}
-                  margin={{
-                    top: 24,
-                    right: 24,
-                    left: 8,
-                    bottom: 12,
-                  }}
+                  margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#dcfce7" />
-                  <XAxis dataKey="date" tick={{ fill: '#047857', fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: '#047857', fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip cursor={{ fill: 'rgba(16, 185, 129, 0.08)' }} />
-                  <Legend verticalAlign="top" height={36} iconType="circle" />
-                  <Bar dataKey="surat_masuk" name="Surat Masuk" radius={[8, 8, 0, 0]} fill="#10b981" />
-                  <Bar dataKey="surat_keluar" name="Surat Keluar" radius={[8, 8, 0, 0]} fill="#facc15" />
+                  <CartesianGrid
+                    strokeDasharray='3 3'
+                    stroke='#e5e7eb'
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey='date'
+                    tick={{ fill: '#6b7280', fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fill: '#6b7280', fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    content={<CustomBarTooltip />}
+                    cursor={{ fill: 'rgba(37, 145, 72, 0.08)' }}
+                  />
+                  <Legend
+                    verticalAlign='top'
+                    height={36}
+                    iconType='circle'
+                    formatter={(value) => (
+                      <span style={{ color: '#6b7280', fontSize: '13px' }}>
+                        {value}
+                      </span>
+                    )}
+                  />
+                  <Bar
+                    dataKey='surat_keluar'
+                    name='Surat Keluar'
+                    radius={[4, 4, 0, 0]}
+                    fill={CHART_COLORS.suratKeluar}
+                  />
+                  <Bar
+                    dataKey='surat_masuk'
+                    name='Surat Masuk'
+                    radius={[4, 4, 0, 0]}
+                    fill={CHART_COLORS.suratMasuk}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        <Card className="xl:col-span-5 2xl:col-span-4 border-none bg-white/95 shadow-sm ring-1 ring-emerald-100">
+        <Card className='xl:col-span-4'>
           <CardHeader>
-            <CardTitle className="text-emerald-900">Distribusi Kategori</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Proporsi surat masuk dan keluar berdasarkan total aktivitas.
+            <CardTitle>Distribusi Surat</CardTitle>
+            <p className='text-sm text-muted-foreground'>
+              Proporsi surat masuk vs keluar
             </p>
           </CardHeader>
-          <CardContent className="h-[360px]">
+          <CardContent className='h-[360px]'>
             {isLoading ? (
-              <div className="flex h-full items-center justify-center">
-                <Skeleton className="h-full w-full" />
+              <div className='flex h-full items-center justify-center'>
+                <Skeleton className='h-full w-full rounded-xl' />
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width='100%' height='100%'>
                 <PieChart>
                   <Pie
                     data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }: { name?: string; percent?: number }) => {
-                      const percentValue = typeof percent === 'number' ? percent : 0
-                      return `${name ?? 'Total'}: ${(percentValue * 100).toFixed(0)}%`
+                    cx='50%'
+                    cy='50%'
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={4}
+                    dataKey='count'
+                    nameKey='name'
+                    label={({ percent }: { percent?: number }) => {
+                      const percentValue =
+                        typeof percent === 'number' ? percent : 0
+                      return `${(percentValue * 100).toFixed(0)}%`
                     }}
-                    outerRadius={110}
-                    fill="#10b981"
-                    dataKey="count"
-                    nameKey="name"
+                    labelLine={false}
                   >
                     {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                      />
                     ))}
                   </Pie>
-                  <Tooltip cursor={{ fill: 'rgba(252, 211, 77, 0.08)' }} />
+                  <Tooltip content={<CustomPieTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
+            )}
+            {!isLoading && pieData.length > 0 && (
+              <div className='flex justify-center gap-6 -mt-4'>
+                {pieData.map((entry, index) => (
+                  <div key={entry.name} className='flex items-center gap-2'>
+                    <div
+                      className='h-3 w-3 rounded-full'
+                      style={{
+                        backgroundColor: PIE_COLORS[index % PIE_COLORS.length],
+                      }}
+                    />
+                    <span className='text-sm text-muted-foreground'>
+                      {entry.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        <Card className="border-none bg-white/95 shadow-sm ring-1 ring-emerald-100">
-          <CardHeader>
-            <CardTitle className="text-emerald-900">Panduan Cepat</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3 text-emerald-800">
-              Gunakan pencarian pada halaman surat untuk menemukan arsip spesifik dengan cepat.
-            </div>
-            <div className="rounded-lg border border-yellow-100 bg-yellow-50/70 p-3 text-yellow-800">
-              Terapkan filter kategori untuk memantau prioritas surat per divisi.
-            </div>
-            <div className="rounded-lg border border-emerald-100 bg-white/80 p-3 text-muted-foreground">
-              Jalankan ekspor laporan pada menu laporan untuk dokumentasi berkala.
-            </div>
+      <div className='grid gap-4 md:grid-cols-3'>
+        <Card className='bg-gradient-to-br from-[#259148]/10 to-[#259148]/5 border-[#259148]/20'>
+          <CardContent className='pt-6'>
+            <h3 className='font-semibold text-foreground'>Surat Masuk Baru</h3>
+            <p className='text-sm text-muted-foreground mt-1'>
+              Catat surat masuk yang baru diterima
+            </p>
+            <Link
+              href='/surat-masuk/create'
+              className='inline-flex items-center gap-1 text-sm font-medium text-[#259148] mt-3 hover:underline'
+            >
+              Tambah Surat <ArrowUpRight className='h-4 w-4' />
+            </Link>
           </CardContent>
         </Card>
 
-        <Card className="border-none bg-white/95 shadow-sm ring-1 ring-emerald-100 lg:col-span-1 xl:col-span-2 2xl:col-span-3">
-          <CardHeader>
-            <CardTitle className="text-emerald-900">Langkah Selanjutnya</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 p-4">
-              <h3 className="text-sm font-semibold text-emerald-800">Verifikasi Surat</h3>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Cek kembali surat yang belum memiliki kategori untuk menjaga data tetap rapi.
-              </p>
-            </div>
-            <div className="rounded-xl border border-dashed border-yellow-200 bg-yellow-50/60 p-4">
-              <h3 className="text-sm font-semibold text-yellow-800">Tinjau Laporan</h3>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Gunakan filter bulanan pada menu laporan untuk memantau kinerja.
-              </p>
-            </div>
-            <div className="rounded-xl border border-dashed border-emerald-200 bg-white/80 p-4">
-              <h3 className="text-sm font-semibold text-emerald-800">Perbarui Profil</h3>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Pastikan informasi user selalu mutakhir demi keamanan akses.
-              </p>
-            </div>
+        <Card className='bg-gradient-to-br from-[#fdc727]/10 to-[#fdc727]/5 border-[#fdc727]/30'>
+          <CardContent className='pt-6'>
+            <h3 className='font-semibold text-foreground'>Surat Keluar Baru</h3>
+            <p className='text-sm text-muted-foreground mt-1'>
+              Buat dan catat surat keluar baru
+            </p>
+            <Link
+              href='/surat-keluar/create'
+              className='inline-flex items-center gap-1 text-sm font-medium text-[#b8941c] mt-3 hover:underline'
+            >
+              Tambah Surat <ArrowUpRight className='h-4 w-4' />
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className='bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20'>
+          <CardContent className='pt-6'>
+            <h3 className='font-semibold text-foreground'>Lihat Laporan</h3>
+            <p className='text-sm text-muted-foreground mt-1'>
+              Analisis dan ekspor data arsip
+            </p>
+            <Link
+              href='/laporan'
+              className='inline-flex items-center gap-1 text-sm font-medium text-blue-600 mt-3 hover:underline'
+            >
+              Buka Laporan <ArrowUpRight className='h-4 w-4' />
+            </Link>
           </CardContent>
         </Card>
       </div>

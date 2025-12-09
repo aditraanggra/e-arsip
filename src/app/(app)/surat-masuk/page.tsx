@@ -6,7 +6,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { suratMasukService, categoriesService } from '@/lib/api/services'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -14,6 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Table,
   TableBody,
@@ -24,7 +33,16 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Plus, Search, FileText, Eye, Edit, Trash } from 'lucide-react'
+import {
+  Plus,
+  Search,
+  FileText,
+  Eye,
+  Edit,
+  Trash2,
+  MoreHorizontal,
+  X,
+} from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function SuratMasukPage() {
@@ -55,11 +73,13 @@ export default function SuratMasukPage() {
   const [dateToInput, setDateToInput] = useState(dateToParam)
   const [districtInput, setDistrictInput] = useState(districtParam)
   const [villageInput, setVillageInput] = useState(villageParam)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   const {
     data: suratMasukDataRaw,
     isLoading: isLoadingSuratMasuk,
     error,
+    refetch,
   } = useQuery({
     queryKey: [
       'surat-masuk',
@@ -85,59 +105,48 @@ export default function SuratMasukPage() {
       }),
   })
 
-  // Log error untuk debugging di production
   useEffect(() => {
     if (error) {
       console.error('[SuratMasuk] Query error:', error)
     }
   }, [error])
 
-  // Parse no_agenda untuk sorting - mendukung format seperti "4521", "4521.A", "4521.B"
   const parseAgendaForSort = (
     agenda: string | number | null | undefined
   ): { num: number; suffix: string } => {
     if (agenda === null || agenda === undefined) {
       return { num: -Infinity, suffix: '' }
     }
-
     const str = String(agenda)
-    // Extract numeric part dan suffix (misal: "4521.A" -> num: 4521, suffix: ".A")
     const match = str.match(/^(\d+)(.*)$/)
     if (match) {
       return { num: parseInt(match[1], 10), suffix: match[2] || '' }
     }
-
-    // Jika tidak ada angka di awal, gunakan string comparison
     return { num: -Infinity, suffix: str }
   }
 
-  // Client-side sorting fallback: urutkan berdasarkan no_agenda descending
   const suratMasukData = useMemo(() => {
     if (!suratMasukDataRaw) return undefined
-
     const sortedData = [...suratMasukDataRaw.data].sort((a, b) => {
       const agendaA = parseAgendaForSort(a.no_agenda)
       const agendaB = parseAgendaForSort(b.no_agenda)
-
-      // Sort by numeric part first (descending)
       if (agendaB.num !== agendaA.num) {
         return agendaB.num - agendaA.num
       }
-
-      // If numeric part is same, sort by suffix (descending: B > A)
       return agendaB.suffix.localeCompare(agendaA.suffix)
     })
-
-    return {
-      ...suratMasukDataRaw,
-      data: sortedData,
-    }
+    return { ...suratMasukDataRaw, data: sortedData }
   }, [suratMasukDataRaw])
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],
     queryFn: () => categoriesService.getAll(),
   })
+
+  // Reset selection when data changes
+  useEffect(() => {
+    setSelectedIds([])
+  }, [suratMasukData])
 
   useEffect(() => {
     setSearchInput(search)
@@ -158,7 +167,6 @@ export default function SuratMasukPage() {
     const params = new URLSearchParams()
     params.set('page', '1')
     params.set('per_page', perPage.toString())
-
     if (searchInput) params.set('q', searchInput)
     if (selectedCategory && selectedCategory !== 'all') {
       params.set('category_id', selectedCategory)
@@ -167,7 +175,6 @@ export default function SuratMasukPage() {
     if (dateToInput) params.set('date_to', dateToInput)
     if (districtInput) params.set('district', districtInput)
     if (villageInput) params.set('village', villageInput)
-
     router.push(`/surat-masuk?${params.toString()}`)
   }
 
@@ -182,7 +189,6 @@ export default function SuratMasukPage() {
     const params = new URLSearchParams(searchParams.toString())
     params.set('page', safePage.toString())
     params.set('per_page', perPageValue.toString())
-    // Hapus sort param karena backend tidak mendukung
     params.delete('sort')
     router.push(`/surat-masuk?${params.toString()}`)
   }
@@ -192,7 +198,25 @@ export default function SuratMasukPage() {
       try {
         await suratMasukService.delete(id)
         toast.success('Surat berhasil dihapus')
-        router.refresh()
+        refetch()
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : 'Gagal menghapus surat'
+        toast.error(message || 'Gagal menghapus surat')
+      }
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (
+      confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} surat?`)
+    ) {
+      try {
+        await Promise.all(selectedIds.map((id) => suratMasukService.delete(id)))
+        toast.success(`${selectedIds.length} surat berhasil dihapus`)
+        setSelectedIds([])
+        refetch()
       } catch (error: unknown) {
         const message =
           error instanceof Error ? error.message : 'Gagal menghapus surat'
@@ -209,11 +233,36 @@ export default function SuratMasukPage() {
     return Array.from(pages).sort((a, b) => a - b)
   }, [currentPage, lastPage])
 
+  // Checkbox handlers
+  const allIds = suratMasukData?.data.map((s) => s.id) ?? []
+  const isAllSelected =
+    allIds.length > 0 && selectedIds.length === allIds.length
+  const isIndeterminate =
+    selectedIds.length > 0 && selectedIds.length < allIds.length
+
+  const handleSelectAll = (checked: boolean | 'indeterminate') => {
+    if (checked) {
+      setSelectedIds(allIds)
+    } else {
+      setSelectedIds([])
+    }
+  }
+
+  const handleSelectRow = (id: number, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id])
+    } else {
+      setSelectedIds((prev) => prev.filter((i) => i !== id))
+    }
+  }
+
   return (
     <div className='w-full min-w-0 space-y-6'>
-      <div className='flex items-center justify-between'>
+      <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
         <div>
-          <h1 className='text-3xl font-bold tracking-tight'>Surat Masuk</h1>
+          <h1 className='text-2xl font-bold text-foreground lg:text-3xl'>
+            Surat Masuk
+          </h1>
           <p className='text-muted-foreground'>Kelola arsip surat masuk</p>
         </div>
         <Button asChild>
@@ -227,11 +276,11 @@ export default function SuratMasukPage() {
       <div className='flex flex-col sm:flex-row gap-4'>
         <div className='flex-1'>
           <div className='relative'>
-            <Search className='absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground' />
+            <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
             <Input
               type='search'
               placeholder='Cari nomor atau perihal surat...'
-              className='pl-8'
+              className='pl-10'
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -244,7 +293,7 @@ export default function SuratMasukPage() {
             onValueChange={(value) => setSelectedCategory(value)}
           >
             <SelectTrigger>
-              <SelectValue placeholder='Filter Kategori' />
+              <SelectValue placeholder='Semua Kategori' />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value='all'>Semua Kategori</SelectItem>
@@ -284,10 +333,24 @@ export default function SuratMasukPage() {
         />
       </div>
 
-      <div className='border rounded-md'>
+      <Card className='overflow-hidden'>
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className='w-12'>
+                <Checkbox
+                  checked={isAllSelected}
+                  data-state={
+                    isIndeterminate
+                      ? 'indeterminate'
+                      : isAllSelected
+                      ? 'checked'
+                      : 'unchecked'
+                  }
+                  onCheckedChange={handleSelectAll}
+                  aria-label='Select all'
+                />
+              </TableHead>
               <TableHead>No. Agenda</TableHead>
               <TableHead>No. Surat</TableHead>
               <TableHead>Perihal</TableHead>
@@ -296,7 +359,7 @@ export default function SuratMasukPage() {
               <TableHead>Tgl Surat</TableHead>
               <TableHead>Wilayah</TableHead>
               <TableHead>Kategori</TableHead>
-              <TableHead className='text-right'>Aksi</TableHead>
+              <TableHead className='w-12 text-center'>Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -304,7 +367,10 @@ export default function SuratMasukPage() {
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index}>
                   <TableCell>
-                    <Skeleton className='h-4 w-20' />
+                    <Skeleton className='h-4 w-4' />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className='h-4 w-16' />
                   </TableCell>
                   <TableCell>
                     <Skeleton className='h-4 w-24' />
@@ -313,40 +379,61 @@ export default function SuratMasukPage() {
                     <Skeleton className='h-4 w-40' />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className='h-4 w-32' />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className='h-4 w-24' />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className='h-4 w-24' />
-                  </TableCell>
-                  <TableCell>
                     <Skeleton className='h-4 w-28' />
                   </TableCell>
                   <TableCell>
                     <Skeleton className='h-4 w-20' />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className='h-8 w-24 ml-auto' />
+                    <Skeleton className='h-4 w-20' />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className='h-4 w-24' />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className='h-4 w-16' />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className='h-8 w-8 mx-auto' />
                   </TableCell>
                 </TableRow>
               ))
             ) : suratMasukData?.data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className='text-center py-8'>
+                <TableCell colSpan={10} className='text-center py-12'>
                   <div className='flex flex-col items-center justify-center text-muted-foreground'>
-                    <FileText className='h-12 w-12 mb-2' />
-                    <p>Tidak ada data surat masuk</p>
+                    <FileText className='h-12 w-12 mb-3 opacity-50' />
+                    <p className='font-medium'>Tidak ada data surat masuk</p>
+                    <p className='text-sm'>
+                      Coba ubah filter atau tambah surat baru
+                    </p>
                   </div>
                 </TableCell>
               </TableRow>
             ) : (
               (suratMasukData?.data ?? []).map((surat) => (
-                <TableRow key={surat.id}>
-                  <TableCell>{surat.no_agenda || '-'}</TableCell>
+                <TableRow
+                  key={surat.id}
+                  data-state={
+                    selectedIds.includes(surat.id) ? 'selected' : undefined
+                  }
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.includes(surat.id)}
+                      onCheckedChange={(checked: boolean | 'indeterminate') =>
+                        handleSelectRow(surat.id, checked === true)
+                      }
+                      aria-label={`Select row ${surat.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className='font-medium'>
+                    {surat.no_agenda || '-'}
+                  </TableCell>
                   <TableCell>{surat.nomor_surat}</TableCell>
-                  <TableCell>{surat.perihal}</TableCell>
+                  <TableCell className='max-w-[200px] truncate'>
+                    {surat.perihal}
+                  </TableCell>
                   <TableCell>{surat.pengirim || '-'}</TableCell>
                   <TableCell>
                     {surat.tanggal_diterima
@@ -360,43 +447,60 @@ export default function SuratMasukPage() {
                       ? new Date(surat.tanggal).toLocaleDateString('id-ID')
                       : '-'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className='max-w-[120px] truncate'>
                     {[surat.district, surat.village]
                       .filter(Boolean)
                       .join(' • ') || '-'}
                   </TableCell>
                   <TableCell>
-                    <Badge variant='outline'>
+                    <Badge variant='outline' className='whitespace-nowrap'>
                       {surat.category?.name || `#${surat.category_id}`}
                     </Badge>
                   </TableCell>
-                  <TableCell className='text-right'>
-                    <div className='flex justify-end gap-2'>
-                      <Button variant='ghost' size='icon' asChild>
-                        <Link href={`/surat-masuk/${surat.id}`}>
-                          <Eye className='h-4 w-4' />
-                        </Link>
-                      </Button>
-                      <Button variant='ghost' size='icon' asChild>
-                        <Link href={`/surat-masuk/${surat.id}/edit`}>
-                          <Edit className='h-4 w-4' />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant='ghost'
-                        size='icon'
-                        onClick={() => handleDelete(surat.id)}
-                      >
-                        <Trash className='h-4 w-4' />
-                      </Button>
-                    </div>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant='ghost' size='icon' className='h-8 w-8'>
+                          <MoreHorizontal className='h-4 w-4' />
+                          <span className='sr-only'>Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align='end' className='w-40'>
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href={`/surat-masuk/${surat.id}`}
+                            className='flex items-center'
+                          >
+                            <Eye className='mr-2 h-4 w-4' />
+                            Lihat
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href={`/surat-masuk/${surat.id}/edit`}
+                            className='flex items-center'
+                          >
+                            <Edit className='mr-2 h-4 w-4' />
+                            Edit
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(surat.id)}
+                          className='text-destructive focus:text-destructive'
+                        >
+                          <Trash2 className='mr-2 h-4 w-4' />
+                          Hapus
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
-      </div>
+      </Card>
 
       {paginationMeta && (
         <div className='flex items-center justify-between'>
@@ -443,6 +547,38 @@ export default function SuratMasukPage() {
               disabled={currentPage >= lastPage}
             >
               Selanjutnya
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Action Bar for bulk actions */}
+      {selectedIds.length > 0 && (
+        <div className='fixed bottom-6 left-1/2 -translate-x-1/2 z-50'>
+          <div
+            className='flex items-center gap-4 rounded-2xl bg-foreground px-6 py-3 text-background'
+            style={{ boxShadow: '0 10px 40px rgba(0,0,0,0.3)' }}
+          >
+            <span className='text-sm font-medium'>
+              {selectedIds.length} item dipilih
+            </span>
+            <div className='h-4 w-px bg-background/20' />
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={handleBulkDelete}
+              className='text-red-400 hover:text-red-300 hover:bg-red-500/20'
+            >
+              <Trash2 className='mr-2 h-4 w-4' />
+              Hapus
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              onClick={() => setSelectedIds([])}
+              className='h-8 w-8 hover:bg-background/10'
+            >
+              <X className='h-4 w-4' />
             </Button>
           </div>
         </div>
