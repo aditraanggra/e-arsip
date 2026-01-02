@@ -128,6 +128,17 @@ export default function SuratMasukPage() {
   const suratMasukData = useMemo(() => {
     if (!suratMasukDataRaw) return undefined
     const sortedData = [...suratMasukDataRaw.data].sort((a, b) => {
+      // Primary sort: tanggal_diterima (date agenda) DESC
+      const dateA = a.tanggal_diterima
+        ? new Date(a.tanggal_diterima).getTime()
+        : 0
+      const dateB = b.tanggal_diterima
+        ? new Date(b.tanggal_diterima).getTime()
+        : 0
+      if (dateB !== dateA) {
+        return dateB - dateA
+      }
+      // Secondary sort: no_agenda DESC
       const agendaA = parseAgendaForSort(a.no_agenda)
       const agendaB = parseAgendaForSort(b.no_agenda)
       if (agendaB.num !== agendaA.num) {
