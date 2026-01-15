@@ -37,6 +37,8 @@ import {
   Plus,
   Search,
   FileText,
+  Eye,
+  Edit,
   Trash2,
   ExternalLink,
   MoreHorizontal,
@@ -422,6 +424,24 @@ export default function SuratKeluarPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align='end' className='w-40'>
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href={`/surat-keluar/${surat.id}`}
+                            className='flex items-center'
+                          >
+                            <Eye className='mr-2 h-4 w-4' />
+                            Lihat
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href={`/surat-keluar/${surat.id}/edit`}
+                            className='flex items-center'
+                          >
+                            <Edit className='mr-2 h-4 w-4' />
+                            Edit
+                          </Link>
+                        </DropdownMenuItem>
                         {surat.file_path && (
                           <>
                             <DropdownMenuItem asChild>
@@ -435,9 +455,9 @@ export default function SuratKeluarPage() {
                                 Lihat Dokumen
                               </a>
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
                           </>
                         )}
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleDelete(surat.id)}
                           className='text-destructive focus:text-destructive'

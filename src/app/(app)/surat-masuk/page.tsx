@@ -42,6 +42,7 @@ import {
   Trash2,
   MoreHorizontal,
   X,
+  FileDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -486,6 +487,19 @@ export default function SuratMasukPage() {
                             Lihat
                           </Link>
                         </DropdownMenuItem>
+                        {surat.file_path && (
+                          <DropdownMenuItem asChild>
+                            <a
+                              href={surat.file_path}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              className='flex items-center'
+                            >
+                              <FileDown className='mr-2 h-4 w-4' />
+                              Lihat Dokumen
+                            </a>
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem asChild>
                           <Link
                             href={`/surat-masuk/${surat.id}/edit`}
